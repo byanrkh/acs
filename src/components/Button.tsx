@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { cn } from "@/libs/cn";
 import type { MouseEventHandler, ReactNode } from "react";
+import { SpecialGhotic } from "@/libs/Font";
 
 type Variant = "primary" | "secondary" | "dark";
 type Size = "sm" | "md";
@@ -16,9 +17,9 @@ type ButtonProps = {
 };
 
 const variantClasses: Record<Variant, string> = {
-  primary: "bg-ember text-ink",
-  secondary: "bg-white text-ink",
-  dark: "bg-ink text-sand",
+  primary: "bg-[#FF5A1F] text-black",
+  secondary: "bg-white text-black",
+  dark: "bg-black text-[#FDF6E9]",
 };
 
 const sizeClasses: Record<Size, string> = {
@@ -36,13 +37,14 @@ export default function Button({
   type = "button",
 }: ButtonProps) {
   const classes = cn(
-    "inline-flex items-center justify-center gap-2 border-4 border-ink font-display uppercase tracking-tight",
-    "shadow-brutal-sm transition-transform duration-150",
-    "hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-brutal",
+    SpecialGhotic.className,
+    "inline-flex items-center justify-center gap-2 border-4 border-black uppercase tracking-tight",
+    "shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-transform duration-150",
+    "hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]",
     "active:translate-x-0 active:translate-y-0 active:shadow-none",
     variantClasses[variant],
     sizeClasses[size],
-    className
+    className,
   );
 
   if (href) {

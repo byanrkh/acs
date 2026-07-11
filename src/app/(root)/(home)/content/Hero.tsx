@@ -1,6 +1,8 @@
 import Container from "@/components/Container";
 import Button from "@/components/Button";
 import PosterFrame from "@/components/PosterFrame";
+import { SpecialGhotic, spaceMono } from "@/libs/Font";
+import { cn } from "@/libs/cn";
 
 export default function Hero() {
   return (
@@ -8,11 +10,16 @@ export default function Hero() {
       <Container>
         <div className="grid grid-cols-1 items-center gap-14 md:grid-cols-2 md:gap-12">
           <div>
-            <span className="inline-block -rotate-2 border-4 border-ink bg-lime-300 px-4 py-1.5 text-sm font-bold shadow-brutal-sm">
+            <span className="inline-block -rotate-2 border-4 border-black bg-lime-300 px-4 py-1.5 text-sm font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
               ACS 2026 · by Quatrolympic
             </span>
 
-            <h2 className="mt-6 font-display text-5xl uppercase leading-[0.95] tracking-tight sm:text-6xl">
+            <h2
+              className={cn(
+                SpecialGhotic.className,
+                "mt-6 text-5xl uppercase leading-[0.95] tracking-tight sm:text-6xl",
+              )}
+            >
               ARCHIPELAGO
             </h2>
 
@@ -32,30 +39,6 @@ export default function Hero() {
                 Learn More
               </Button>
             </div>
-
-            {/* quick facts, biar hero gak cuma teks+tombol */}
-            <dl className="mt-10 flex flex-wrap gap-x-8 gap-y-3 border-t-4 border-ink pt-6">
-              <div>
-                <dt className="font-mono text-xs uppercase tracking-widest text-ink/50">
-                  Tanggal
-                </dt>
-                <dd className="font-display text-sm uppercase">
-                  23 Agustus 2026
-                </dd>
-              </div>
-              <div>
-                <dt className="font-mono text-xs uppercase tracking-widest text-ink/50">
-                  Lokasi
-                </dt>
-                <dd className="font-display text-sm uppercase">Bekasi</dd>
-              </div>
-              <div>
-                <dt className="font-mono text-xs uppercase tracking-widest text-ink/50">
-                  Kuota
-                </dt>
-                <dd className="font-display text-sm uppercase">300 Slot</dd>
-              </div>
-            </dl>
           </div>
 
           <div className="flex justify-center">

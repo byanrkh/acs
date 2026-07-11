@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { SpecialGhotic, spaceMono } from "@/libs/Font";
+import { cn } from "@/libs/cn";
 
-// Minggu, 23 Agustus 2026 — 06:00 WIB (start hari-H)
 const TARGET_DATE = new Date("2026-08-23T06:00:00+07:00").getTime();
 
 type TimeLeft = {
@@ -41,22 +42,45 @@ export default function Countdown() {
   ];
 
   return (
-    <section className="relative overflow-hidden border-y-4 border-ink bg-ember">
-      {/* tekstur polkadot di background */}
-      <div aria-hidden className="bg-polka absolute inset-0 text-ink/10" />
+    <section className="relative overflow-hidden border-y-4 border-black bg-[#FF5A1F]">
+      {/* tekstur polkadot — inline style, pure CSS */}
+      <div
+        aria-hidden
+        className="absolute inset-0"
+        style={{
+          backgroundImage:
+            "radial-gradient(rgba(0,0,0,0.12) 1.6px, transparent 1.6px)",
+          backgroundSize: "20px 20px",
+        }}
+      />
 
       <div className="relative mx-auto max-w-5xl px-6 py-10 md:py-14">
-        <p className="text-center font-mono text-xs uppercase tracking-widest text-ink/70 md:text-sm">
-          Menuju hari-H · minggu, 23 agustus 2026
+        <p
+          className={cn(
+            spaceMono.className,
+            "text-center text-xs uppercase tracking-widest text-black/70 md:text-sm",
+          )}
+        >
+          Counting down to the big day · Sunday, 23 August 2026
         </p>
 
-        <div className="mt-6 grid grid-cols-2 gap-y-8 sm:grid-cols-4 sm:gap-0 sm:divide-x-4 sm:divide-dashed sm:divide-ink/30">
+        <div className="mt-6 grid grid-cols-2 gap-y-8 sm:grid-cols-4 sm:gap-0 sm:divide-x-4 sm:divide-dashed sm:divide-black/30">
           {segments.map((seg) => (
             <div key={seg.label} className="flex flex-col items-center px-2">
-              <span className="font-display text-6xl tabular-nums text-palm sm:text-7xl md:text-8xl">
+              <span
+                className={cn(
+                  SpecialGhotic.className,
+                  "text-6xl tabular-nums text-[#1F4B33] sm:text-7xl md:text-8xl",
+                )}
+              >
                 {seg.value === undefined ? "--" : pad(seg.value)}
               </span>
-              <span className="mt-1 font-display text-xs uppercase tracking-widest text-palm md:text-sm">
+              <span
+                className={cn(
+                  SpecialGhotic.className,
+                  "mt-1 text-xs uppercase tracking-widest text-[#1F4B33] md:text-sm",
+                )}
+              >
                 {seg.label}
               </span>
             </div>
