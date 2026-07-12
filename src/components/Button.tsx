@@ -14,6 +14,7 @@ type ButtonProps = {
   size?: Size;
   className?: string;
   type?: "button" | "submit";
+  disabled?: boolean;
 };
 
 const variantClasses: Record<Variant, string> = {
@@ -35,6 +36,7 @@ export default function Button({
   size = "md",
   className,
   type = "button",
+  disabled = false,
 }: ButtonProps) {
   const classes = cn(
     SpecialGhotic.className,
@@ -42,6 +44,7 @@ export default function Button({
     "shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-transform duration-150",
     "hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]",
     "active:translate-x-0 active:translate-y-0 active:shadow-none",
+    "disabled:pointer-events-none disabled:opacity-50 disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]",
     variantClasses[variant],
     sizeClasses[size],
     className,
@@ -56,7 +59,12 @@ export default function Button({
   }
 
   return (
-    <button type={type} onClick={onClick} className={classes}>
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      className={classes}
+    >
       {children}
     </button>
   );

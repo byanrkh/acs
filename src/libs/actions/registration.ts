@@ -1,0 +1,150 @@
+"use server";
+
+import { supabaseAdmin } from "@/libs/supabase/server";
+
+export type RegistrationPayload = {
+  kategori: "pelajar" | "umum";
+  nisn?: string;
+  nikTerakhir?: string;
+  namaLengkap: string;
+  email: string;
+  telepon: string;
+  tempatLahir: string;
+  tanggalLahir: string;
+  jenisKelamin: "L" | "P";
+  golonganDarah: string;
+  riwayatPenyakit?: string;
+  kontakDaruratNama: string;
+  kontakDaruratTelepon: string;
+  ukuranJersey: string;
+  namaBib: string;
+};
+
+export type RegistrationResult =
+  | { ok: true; bibNumber: string }
+  | { ok: false; error: string; field?: keyof RegistrationPayload };
+
+function validatePayload(data: RegistrationPayload): RegistrationResult | null {
+  // Validasi ulang di server — validasi di client (Modul 2) bisa dilewati
+  // orang yang iseng manggil action ini langsung lewat devtools.
+  if (!data.namaLengkap?.trim()) {
+    return { ok: false, error: "Nama lengkap wajib diisi.", field: "namaLengkap" };
+  }
+  if (!/^\S+@\S+\.\S+$/.test(data.email ?? "")) {
+    return { ok: false, error: "Format email tidak valid.", field: "email" };
+  }
+  if (data.kategori === "pelajar" && !/^\d{10}$/.test(data.nisn ?? "")) {
+    return { ok: false, error: "NISN wajib 10 digit angka.", field: "nisn" };
+  }
+  if (data.kategori === "umum" && !/^\d{4}$/.test(data.nikTerakhir ?? "")) {
+    return { ok: false, error: "4 digit terakhir NIK tidak valid.", field: "nikTerakhir" };
+  }
+  if ((data.namaBib ?? "").length > 12) {
+    return { ok: false, error: "Nama di BIB maksimal 12 karakter.", field: "namaBib" };
+  }
+  return null;
+}
+
+export async function submitRegistration(
+  data: RegistrationPayload
+): Promise<RegistrationResult> {
+  const validationError = validatePayload(data);
+  if (validationError) return validationError;
+
+  const email = data.email.trim().toLowerCase();
+
+  // 1) Cek email ganda
+  const { data: existingEmail, error: emailCheckError } = await supabaseAdmin
+    .from("registrations")
+    .select("id")
+    .eq("email", email)
+    .maybeSingle();
+
+  if (emailCheckError) {
+    console.error("Gagal cek email ganda:", emailCheckError);
+    return { ok: false, error: "Terjadi kesalahan server, coba lagi." };
+  }
+  if (existingEmail) {
+    return { ok: false, error: "Email ini sudah terdaftar sebelumnya.", field: "email" };
+  }
+
+  // 2) Cek NISN/NIK ganda sesuai kategori
+  if (data.kategori === "pelajar") {
+    const { data: existingNisn, error: nisnCheckError } = await supabaseAdmin
+      .from("registrations")
+      .select("id")
+      .eq("kategori", "pelajar")
+      .eq("nisn", data.nisn)
+      .maybeSingle();
+
+    if (nisnCheckError) {
+      console.error("Gagal cek NISN ganda:", nisnCheckError);
+      return { ok: false, error: "Terjadi kesalahan server, coba lagi." };
+    }
+    if (existingNisn) {
+      return { ok: false, error: "NISN ini sudah terdaftar sebelumnya.", field: "nisn" };
+    }
+  } else {
+    // Catatan: 4 digit terakhir NIK bukan identifier unik (bisa kebetulan
+    // sama antar dua orang berbeda). Makanya dicocokkan bareng nama, biar
+    // nggak salah nolak orang lain yang kebetulan 4 digit akhirnya sama.
+    const { data: existingNik, error: nikCheckError } = await supabaseAdmin
+      .from("registrations")
+      .select("id")
+      .eq("kategori", "umum")
+      .eq("nik_terakhir", data.nikTerakhir)
+      .ilike("nama_lengkap", data.namaLengkap.trim())
+      .maybeSingle();
+
+    if (nikCheckError) {
+      console.error("Gagal cek NIK ganda:", nikCheckError);
+      return { ok: false, error: "Terjadi kesalahan server, coba lagi." };
+    }
+    if (existingNik) {
+      return {
+        ok: false,
+        error: "Data dengan nama & NIK ini sudah terdaftar sebelumnya.",
+        field: "nikTerakhir",
+      };
+    }
+  }
+
+  // 3) Simpan. bib_number di-generate OTOMATIS oleh trigger database
+  //    (lihat SQL setup) — sengaja nggak dikirim dari sini.
+  const { data: inserted, error: insertError } = await supabaseAdmin
+    .from("registrations")
+    .insert({
+      kategori: data.kategori,
+      nisn: data.kategori === "pelajar" ? data.nisn : null,
+      nik_terakhir: data.kategori === "umum" ? data.nikTerakhir : null,
+      nama_lengkap: data.namaLengkap.trim(),
+      email,
+      telepon: data.telepon.trim(),
+      tempat_lahir: data.tempatLahir.trim(),
+      tanggal_lahir: data.tanggalLahir,
+      jenis_kelamin: data.jenisKelamin,
+      golongan_darah: data.golonganDarah,
+      riwayat_penyakit: data.riwayatPenyakit?.trim() || null,
+      kontak_darurat_nama: data.kontakDaruratNama.trim(),
+      kontak_darurat_telepon: data.kontakDaruratTelepon.trim(),
+      ukuran_jersey: data.ukuranJersey,
+      nama_bib: data.namaBib.trim(),
+      status: "pending_payment",
+    })
+    .select("bib_number")
+    .single();
+
+  if (insertError) {
+    // Fallback kalau ada race condition yang lolos dari pre-check di atas
+    // (dua submit nyaris bersamaan) — unique index di DB yang nyelametin.
+    if (insertError.code === "23505") {
+      return { ok: false, error: "Data ini sepertinya sudah pernah didaftarkan." };
+    }
+    console.error("Gagal simpan registrasi:", insertError);
+    return { ok: false, error: "Gagal menyimpan data, coba lagi." };
+  }
+
+  // BIB number SENGAJA nggak ditampilkan ke user (status masih pending_payment).
+  // Nilai baliknya cuma buat kebutuhan internal/log.
+  return { ok: true, bibNumber: inserted.bib_number as string };
+}

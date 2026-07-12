@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useRef, useState } from "react";
+import { ChangeEvent, FormEvent, useRef, useState, useTransition } from "react";
 import Button from "@/components/Button";
 import FormField from "@/components/form/FormField";
 import SelectField from "@/components/form/SelectField";
@@ -8,7 +8,8 @@ import TextAreaField from "@/components/form/TextAreaField";
 import RadioTabs from "@/components/form/RadioTabs";
 import StepIndicator from "@/components/form/StepIndicator";
 import SizeChartModal from "@/components/SizeChartModal";
-import { SpecialGhotic } from "@/libs/Font";
+import { submitRegistration } from "@/libs/actions/registration";
+import { SpecialGhotic, spaceMono } from "@/libs/Font";
 import { cn } from "@/libs/cn";
 
 type Kategori = "pelajar" | "umum" | "";
@@ -70,7 +71,14 @@ const jerseyOptions = [
 
 const stepLabels = ["Data pribadi", "Data medis", "Jersey & lainnya"];
 
-// --- Validasi per step, jadi tiap "Next" cuma ngecek field di step itu ---
+// field-field yang letaknya di step 1 — dipakai buat mutusin harus
+// balik ke step mana kalau server nolak karena data ganda
+const step1Fields: (keyof FormState)[] = [
+  "email",
+  "nisn",
+  "nikTerakhir",
+  "namaLengkap",
+];
 
 function validateStep1(form: FormState): FormErrors {
   const errors: FormErrors = {};
@@ -127,7 +135,9 @@ export default function RegistrationForm() {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<FormState>(initialState);
   const [errors, setErrors] = useState<FormErrors>({});
+  const [serverError, setServerError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const formTopRef = useRef<HTMLDivElement>(null);
 
   function updateField<K extends keyof FormState>(
@@ -136,6 +146,7 @@ export default function RegistrationForm() {
   ) {
     setForm((prev) => ({ ...prev, [name]: value }));
     setErrors((prev) => ({ ...prev, [name]: undefined }));
+    setServerError(null);
   }
 
   function handleInputChange(
@@ -195,7 +206,6 @@ export default function RegistrationForm() {
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
-    // Enter di step 1/2 seharusnya jalan seperti tombol "Lanjut", bukan submit beneran
     if (step < 3) {
       goNext();
       return;
@@ -209,9 +219,55 @@ export default function RegistrationForm() {
       return;
     }
 
-    // NOTE: belum terhubung backend — sambungkan endpoint pendaftaran di sini.
-    console.log("Registration payload:", form);
-    setSubmitted(true);
+    setServerError(null);
+
+    startTransition(async () => {
+      const result = await submitRegistration({
+        kategori: form.kategori as "pelajar" | "umum",
+        nisn: form.nisn || undefined,
+        nikTerakhir: form.nikTerakhir || undefined,
+        namaLengkap: form.namaLengkap,
+        email: form.email,
+        telepon: form.telepon,
+        tempatLahir: form.tempatLahir,
+        tanggalLahir: form.tanggalLahir,
+        jenisKelamin: form.jenisKelamin as "L" | "P",
+        golonganDarah: form.golonganDarah,
+        riwayatPenyakit: form.riwayatPenyakit || undefined,
+        kontakDaruratNama: form.kontakDaruratNama,
+        kontakDaruratTelepon: form.kontakDaruratTelepon,
+        ukuranJersey: form.ukuranJersey,
+        namaBib: form.namaBib,
+      });
+
+      if (!result.ok) {
+        setServerError(result.error);
+
+        if (result.field) {
+          setErrors((prev) => ({
+            ...prev,
+            [result.field as keyof FormState]: result.error,
+          }));
+
+          // kalau errornya soal field yang ada di step 1, balikin usernya ke step 1
+          if (step1Fields.includes(result.field)) {
+            setStep(1);
+          }
+
+          requestAnimationFrame(() => {
+            document.getElementById(result.field as string)?.scrollIntoView({
+              behavior: "smooth",
+              block: "center",
+            });
+          });
+        } else {
+          scrollToTop();
+        }
+        return;
+      }
+
+      setSubmitted(true);
+    });
   }
 
   if (submitted) {
@@ -228,8 +284,8 @@ export default function RegistrationForm() {
         <p className="mx-auto mt-3 max-w-md leading-relaxed text-black/80">
           Terima kasih, {form.namaLengkap}. Data kamu sudah kami catat untuk
           kategori {form.kategori === "pelajar" ? "pelajar" : "umum"} dengan
-          ukuran jersey {form.ukuranJersey}. Konfirmasi akan dikirim ke{" "}
-          {form.email}.
+          ukuran jersey {form.ukuranJersey}, status: menunggu pembayaran.
+          Konfirmasi & instruksi pembayaran akan dikirim ke {form.email}.
         </p>
         <Button
           variant="secondary"
@@ -237,6 +293,7 @@ export default function RegistrationForm() {
           onClick={() => {
             setForm(initialState);
             setErrors({});
+            setServerError(null);
             setStep(1);
             setSubmitted(false);
           }}
@@ -483,13 +540,36 @@ export default function RegistrationForm() {
               error={errors.namaBib}
               hint={`${form.namaBib.length}/12 karakter`}
             />
+
+            {/* Banner error dari server — cuma muncul kalau errornya
+                bukan error field spesifik (mis. server down) */}
+            {serverError &&
+              !errors.email &&
+              !errors.nisn &&
+              !errors.nikTerakhir && (
+                <div className="border-4 border-[#D91E36] bg-[#D91E36]/10 px-4 py-3">
+                  <p
+                    className={cn(
+                      spaceMono.className,
+                      "text-xs text-[#D91E36]",
+                    )}
+                  >
+                    {serverError}
+                  </p>
+                </div>
+              )}
           </fieldset>
         )}
 
         {/* NAVIGASI STEP */}
         <div className="flex items-center justify-between gap-4 border-t-4 border-black pt-6">
           {step > 1 ? (
-            <Button type="button" variant="secondary" onClick={goBack}>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={goBack}
+              disabled={isPending}
+            >
               Kembali
             </Button>
           ) : (
@@ -497,12 +577,48 @@ export default function RegistrationForm() {
           )}
 
           {step < 3 ? (
-            <Button type="button" variant="primary" onClick={goNext}>
+            <Button
+              type="button"
+              variant="primary"
+              onClick={goNext}
+              disabled={isPending}
+            >
               Lanjut
             </Button>
           ) : (
-            <Button type="submit" variant="primary" className="text-[#004D3D]">
-              Konfirmasi & daftar
+            <Button
+              type="submit"
+              variant="primary"
+              className="text-[#004D3D]"
+              disabled={isPending}
+            >
+              {isPending ? (
+                <>
+                  <svg
+                    className="h-4 w-4 animate-spin"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    aria-hidden
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                    />
+                  </svg>
+                  Menyimpan...
+                </>
+              ) : (
+                "Konfirmasi & daftar"
+              )}
             </Button>
           )}
         </div>

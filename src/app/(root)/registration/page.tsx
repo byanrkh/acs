@@ -22,11 +22,11 @@ export default function RegistrationPage() {
               "mt-6 text-4xl uppercase leading-[0.95] tracking-tight text-black sm:text-5xl",
             )}
           >
-            Daftar sekarang
+            REGISTER NOW!
           </h1>
           <p className="mt-4 leading-relaxed text-black/80">
-            Isi data diri kamu dengan lengkap dan benar. Kuota terbatas untuk
-            300 slot, jadi pastikan kamu segera amankan tempatmu.
+            Fill in your personal data completely and correctly. Slots are
+            limited to 300 only, so make sure to secure your spot immediately.
           </p>
 
           <div className="mt-10">
