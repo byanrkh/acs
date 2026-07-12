@@ -1,6 +1,7 @@
 "use client";
 
 import { ChangeEvent, FormEvent, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import Button from "@/components/Button";
 import FormField from "@/components/form/FormField";
 import SelectField from "@/components/form/SelectField";
@@ -71,8 +72,6 @@ const jerseyOptions = [
 
 const stepLabels = ["Data pribadi", "Data medis", "Jersey & lainnya"];
 
-// field-field yang letaknya di step 1 — dipakai buat mutusin harus
-// balik ke step mana kalau server nolak karena data ganda
 const step1Fields: (keyof FormState)[] = [
   "email",
   "nisn",
@@ -132,11 +131,11 @@ function validateStep3(form: FormState): FormErrors {
 }
 
 export default function RegistrationForm() {
+  const router = useRouter();
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<FormState>(initialState);
   const [errors, setErrors] = useState<FormErrors>({});
   const [serverError, setServerError] = useState<string | null>(null);
-  const [submitted, setSubmitted] = useState(false);
   const [isPending, startTransition] = useTransition();
   const formTopRef = useRef<HTMLDivElement>(null);
 
@@ -174,9 +173,8 @@ export default function RegistrationForm() {
   function focusFirstError(stepErrors: FormErrors) {
     const firstErrorKey = Object.keys(stepErrors)[0];
     if (firstErrorKey) {
-      document
-        .getElementById(firstErrorKey)
-        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      const element = document.getElementById(firstErrorKey);
+      element?.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   }
 
@@ -249,7 +247,6 @@ export default function RegistrationForm() {
             [result.field as keyof FormState]: result.error,
           }));
 
-          // kalau errornya soal field yang ada di step 1, balikin usernya ke step 1
           if (step1Fields.includes(result.field)) {
             setStep(1);
           }
@@ -266,42 +263,9 @@ export default function RegistrationForm() {
         return;
       }
 
-      setSubmitted(true);
+      // Sukses: Langsung tendang ke halaman checkout Modul 4
+      router.push(`/checkout/${result.registrationId}`);
     });
-  }
-
-  if (submitted) {
-    return (
-      <div className="border-4 border-black bg-[#FFD400] p-8 text-center shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] md:p-12">
-        <h3
-          className={cn(
-            SpecialGhotic.className,
-            "text-2xl uppercase tracking-tight text-black md:text-3xl",
-          )}
-        >
-          Pendaftaran terkirim
-        </h3>
-        <p className="mx-auto mt-3 max-w-md leading-relaxed text-black/80">
-          Terima kasih, {form.namaLengkap}. Data kamu sudah kami catat untuk
-          kategori {form.kategori === "pelajar" ? "pelajar" : "umum"} dengan
-          ukuran jersey {form.ukuranJersey}, status: menunggu pembayaran.
-          Konfirmasi & instruksi pembayaran akan dikirim ke {form.email}.
-        </p>
-        <Button
-          variant="secondary"
-          className="mt-8"
-          onClick={() => {
-            setForm(initialState);
-            setErrors({});
-            setServerError(null);
-            setStep(1);
-            setSubmitted(false);
-          }}
-        >
-          Daftar peserta lain
-        </Button>
-      </div>
-    );
   }
 
   return (
@@ -541,8 +505,6 @@ export default function RegistrationForm() {
               hint={`${form.namaBib.length}/12 karakter`}
             />
 
-            {/* Banner error dari server — cuma muncul kalau errornya
-                bukan error field spesifik (mis. server down) */}
             {serverError &&
               !errors.email &&
               !errors.nisn &&

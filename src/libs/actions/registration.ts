@@ -21,12 +21,10 @@ export type RegistrationPayload = {
 };
 
 export type RegistrationResult =
-  | { ok: true; bibNumber: string }
+  | { ok: true; registrationId: string }
   | { ok: false; error: string; field?: keyof RegistrationPayload };
 
 function validatePayload(data: RegistrationPayload): RegistrationResult | null {
-  // Validasi ulang di server — validasi di client (Modul 2) bisa dilewati
-  // orang yang iseng manggil action ini langsung lewat devtools.
   if (!data.namaLengkap?.trim()) {
     return { ok: false, error: "Nama lengkap wajib diisi.", field: "namaLengkap" };
   }
@@ -85,9 +83,6 @@ export async function submitRegistration(
       return { ok: false, error: "NISN ini sudah terdaftar sebelumnya.", field: "nisn" };
     }
   } else {
-    // Catatan: 4 digit terakhir NIK bukan identifier unik (bisa kebetulan
-    // sama antar dua orang berbeda). Makanya dicocokkan bareng nama, biar
-    // nggak salah nolak orang lain yang kebetulan 4 digit akhirnya sama.
     const { data: existingNik, error: nikCheckError } = await supabaseAdmin
       .from("registrations")
       .select("id")
@@ -109,8 +104,7 @@ export async function submitRegistration(
     }
   }
 
-  // 3) Simpan. bib_number di-generate OTOMATIS oleh trigger database
-  //    (lihat SQL setup) — sengaja nggak dikirim dari sini.
+  // 3) Simpan ke database dan ambil 'id' (UUID) baris baru
   const { data: inserted, error: insertError } = await supabaseAdmin
     .from("registrations")
     .insert({
@@ -131,12 +125,10 @@ export async function submitRegistration(
       nama_bib: data.namaBib.trim(),
       status: "pending_payment",
     })
-    .select("bib_number")
+    .select("id")
     .single();
 
   if (insertError) {
-    // Fallback kalau ada race condition yang lolos dari pre-check di atas
-    // (dua submit nyaris bersamaan) — unique index di DB yang nyelametin.
     if (insertError.code === "23505") {
       return { ok: false, error: "Data ini sepertinya sudah pernah didaftarkan." };
     }
@@ -144,7 +136,5 @@ export async function submitRegistration(
     return { ok: false, error: "Gagal menyimpan data, coba lagi." };
   }
 
-  // BIB number SENGAJA nggak ditampilkan ke user (status masih pending_payment).
-  // Nilai baliknya cuma buat kebutuhan internal/log.
-  return { ok: true, bibNumber: inserted.bib_number as string };
+  return { ok: true, registrationId: inserted.id as string };
 }
