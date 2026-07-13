@@ -36,6 +36,8 @@ type FormState = {
 
 type FormErrors = Partial<Record<keyof FormState, string>>;
 
+const TOTAL_STEPS = 3;
+
 const initialState: FormState = {
   kategori: "",
   nisn: "",
@@ -130,6 +132,16 @@ function validateStep3(form: FormState): FormErrors {
   return errors;
 }
 
+// PENTING: peta eksplisit per-step, BUKAN ternary. Ini yang bikin nggak
+// mungkin ada validator step yang salah kepanggil pas navigasi antar step —
+// goNext() cuma pernah baca stepValidators[step_SEKARANG], titik, nggak ada
+// jalur lain yang bisa nyasar ke validateStep3 sebelum step-nya beneran 3.
+const stepValidators: Record<number, (form: FormState) => FormErrors> = {
+  1: validateStep1,
+  2: validateStep2,
+  3: validateStep3,
+};
+
 export default function RegistrationForm() {
   const router = useRouter();
   const [step, setStep] = useState(1);
@@ -173,8 +185,10 @@ export default function RegistrationForm() {
   function focusFirstError(stepErrors: FormErrors) {
     const firstErrorKey = Object.keys(stepErrors)[0];
     if (firstErrorKey) {
-      const element = document.getElementById(firstErrorKey);
-      element?.scrollIntoView({ behavior: "smooth", block: "center" });
+      document.getElementById(firstErrorKey)?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
     }
   }
 
@@ -182,8 +196,15 @@ export default function RegistrationForm() {
     formTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
+  // goNext HANYA divalidasi terhadap step yang lagi aktif SEKARANG (via
+  // stepValidators[step]) — tidak pernah menyentuh validator step 3 sebelum
+  // step beneran berada di 3.
   function goNext() {
-    const stepErrors = step === 1 ? validateStep1(form) : validateStep2(form);
+    if (isPending) return;
+    if (step >= TOTAL_STEPS) return; // pengaman ekstra, seharusnya nggak pernah kepanggil di step 3
+
+    const validator = stepValidators[step];
+    const stepErrors = validator(form);
     setErrors(stepErrors);
 
     if (Object.keys(stepErrors).length > 0) {
@@ -191,20 +212,25 @@ export default function RegistrationForm() {
       return;
     }
 
-    setStep((s) => Math.min(s + 1, 3));
+    setStep((s) => Math.min(s + 1, TOTAL_STEPS));
     scrollToTop();
   }
 
   function goBack() {
+    if (isPending) return;
     setErrors({});
     setStep((s) => Math.max(s - 1, 1));
     scrollToTop();
   }
 
+  // handleSubmit HANYA melakukan submit sungguhan (validateStep3 + kirim ke
+  // server) kalau step === TOTAL_STEPS. Di step 1/2, submit event (misalnya
+  // dari user pencet Enter di keyboard) diarahkan ke goNext(), BUKAN
+  // langsung validasi/submit akhir.
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
-    if (step < 3) {
+    if (step < TOTAL_STEPS) {
       goNext();
       return;
     }
@@ -263,7 +289,6 @@ export default function RegistrationForm() {
         return;
       }
 
-      // Sukses: Langsung tendang ke halaman checkout Modul 4
       router.push(`/checkout/${result.registrationId}`);
     });
   }
@@ -538,7 +563,7 @@ export default function RegistrationForm() {
             <span />
           )}
 
-          {step < 3 ? (
+          {step < TOTAL_STEPS ? (
             <Button
               type="button"
               variant="primary"

@@ -5,14 +5,18 @@ import { snap } from "@/libs/midtrans/server";
 import { resend, EMAIL_FROM } from "@/libs/email/resend";
 import { buildInvoiceEmailHtml } from "@/libs/email/invoiceTemplate";
 import { getRegistrationFee } from "@/libs/config/pricing";
+import { buildOrderId } from "@/libs/midtrans/orderId";
 
 const PAYMENT_DURATION_HOURS = 24;
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
 type CreateSnapResult =
   | { ok: true; token: string; redirectUrl: string }
   | { ok: false; error: string };
 
-export async function createSnapTransaction(registrationId: string): Promise<CreateSnapResult> {
+export async function createSnapTransaction(
+  registrationId: string,
+): Promise<CreateSnapResult> {
   const { data: registration, error } = await supabaseAdmin
     .from("registrations")
     .select("*")
@@ -23,25 +27,27 @@ export async function createSnapTransaction(registrationId: string): Promise<Cre
     return { ok: false, error: "Data pendaftaran tidak ditemukan." };
   }
   if (registration.status === "confirmed") {
-    return { ok: false, error: "Pendaftaran ini sudah dikonfirmasi, tidak perlu bayar lagi." };
+    return {
+      ok: false,
+      error: "Pendaftaran ini sudah dikonfirmasi, tidak perlu bayar lagi.",
+    };
   }
   if (registration.status === "cancelled") {
     return { ok: false, error: "Pendaftaran ini sudah dibatalkan." };
   }
 
   const grossAmount = getRegistrationFee(registration.kategori);
-  const isRetry = registration.status === "expired";
-
-  // Order id cuma dibuat baru kalau ini transaksi pertama, atau kalau
-  // sebelumnya expired dan user coba bayar ulang — Midtrans wajib order_id unik.
-  const orderId =
-    registration.midtrans_order_id && !isRetry
-      ? registration.midtrans_order_id
-      : `ACS-${registration.id.slice(0, 8)}-${Date.now()}`;
+  const orderId = buildOrderId(registration.id);
 
   const paymentExpiresAt = new Date(
-    Date.now() + PAYMENT_DURATION_HOURS * 60 * 60 * 1000
+    Date.now() + PAYMENT_DURATION_HOURS * 60 * 60 * 1000,
   ).toISOString();
+
+  // finish: setelah user klik "Selesai" / berhasil bayar di dalam popup,
+  // tombol "Go back to Merchant" akan mengarah ke sini — BUKAN example.com.
+  // Diarahkan balik ke halaman checkout yang sama, karena halaman itu udah
+  // otomatis nampilin status terbaru begitu dibuka/di-refresh.
+  const finishUrl = `${APP_URL}/checkout/${registration.id}`;
 
   let transaction;
   try {
@@ -58,6 +64,9 @@ export async function createSnapTransaction(registrationId: string): Promise<Cre
       expiry: {
         unit: "hours",
         duration: PAYMENT_DURATION_HOURS,
+      },
+      callbacks: {
+        finish: finishUrl,
       },
     });
   } catch (err) {
@@ -80,10 +89,6 @@ export async function createSnapTransaction(registrationId: string): Promise<Cre
     return { ok: false, error: "Gagal menyimpan data pembayaran." };
   }
 
-  // Email Ke-1 (Invoice) — sengaja CUMA dikirim sekali per registrasi
-  // (dicek lewat invoice_email_sent_at), bukan tiap kali token dibuat.
-  // Kalau maunya beneran tiap create token, tinggal hapus pengecekan ini —
-  // tapi risikonya user bisa spam klik & kebanjiran email yang sama.
   if (!registration.invoice_email_sent_at) {
     try {
       await resend.emails.send({
@@ -106,17 +111,17 @@ export async function createSnapTransaction(registrationId: string): Promise<Cre
         .update({ invoice_email_sent_at: new Date().toISOString() })
         .eq("id", registrationId);
     } catch (emailError) {
-      // Gagal kirim email TIDAK menggagalkan proses bayar — token Snap
-      // tetap dikasih ke user, kegagalan cuma dicatat di log server.
       console.error("Gagal mengirim email invoice:", emailError);
     }
   }
 
-  return { ok: true, token: transaction.token, redirectUrl: transaction.redirect_url };
+  return {
+    ok: true,
+    token: transaction.token,
+    redirectUrl: transaction.redirect_url,
+  };
 }
 
-// Fallback kalau webhook Midtrans belum sempat / gagal masuk — dicek tiap
-// halaman checkout dibuka, biar UI tetap jujur meskipun webhook telat.
 export async function checkAndExpireIfPastDeadline(registrationId: string) {
   const { data: registration } = await supabaseAdmin
     .from("registrations")
@@ -132,19 +137,26 @@ export async function checkAndExpireIfPastDeadline(registrationId: string) {
     new Date(registration.payment_expires_at).getTime() < Date.now();
 
   if (isPastDeadline) {
-    await supabaseAdmin.from("registrations").update({ status: "expired" }).eq("id", registrationId);
+    await supabaseAdmin
+      .from("registrations")
+      .update({ status: "expired" })
+      .eq("id", registrationId);
     return "expired" as const;
   }
 
   return registration.status as string;
 }
 
+// Sekarang juga balikin bib_number, dipakai buat nampilin di halaman
+// checkout begitu status confirmed.
 export async function getRegistrationStatus(registrationId: string) {
   const { data } = await supabaseAdmin
     .from("registrations")
-    .select("status")
+    .select("status, bib_number")
     .eq("id", registrationId)
     .single();
 
-  return data?.status ?? null;
+  if (!data) return null;
+
+  return { status: data.status as string, bibNumber: data.bib_number as string | null };
 }

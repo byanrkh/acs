@@ -13,7 +13,7 @@ export default async function CheckoutPage({
   const { data: registration } = await supabaseAdmin
     .from("registrations")
     .select(
-      "id, nama_lengkap, email, kategori, ukuran_jersey, status, midtrans_order_id, payment_expires_at",
+      "id, nama_lengkap, email, kategori, ukuran_jersey, status, midtrans_order_id, payment_expires_at, bib_number",
     )
     .eq("id", id)
     .single();
