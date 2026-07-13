@@ -6,6 +6,7 @@ import { resend, EMAIL_FROM } from "@/libs/email/resend";
 import { buildInvoiceEmailHtml } from "@/libs/email/invoiceTemplate";
 import { getRegistrationFee } from "@/libs/config/pricing";
 import { buildOrderId } from "@/libs/midtrans/orderId";
+import { applyTransactionStatus } from "@/libs/midtrans/appleStatusUpdate";
 
 const PAYMENT_DURATION_HOURS = 24;
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
@@ -43,10 +44,6 @@ export async function createSnapTransaction(
     Date.now() + PAYMENT_DURATION_HOURS * 60 * 60 * 1000,
   ).toISOString();
 
-  // finish: setelah user klik "Selesai" / berhasil bayar di dalam popup,
-  // tombol "Go back to Merchant" akan mengarah ke sini — BUKAN example.com.
-  // Diarahkan balik ke halaman checkout yang sama, karena halaman itu udah
-  // otomatis nampilin status terbaru begitu dibuka/di-refresh.
   const finishUrl = `${APP_URL}/checkout/${registration.id}`;
 
   let transaction;
@@ -147,16 +144,62 @@ export async function checkAndExpireIfPastDeadline(registrationId: string) {
   return registration.status as string;
 }
 
-// Sekarang juga balikin bib_number, dipakai buat nampilin di halaman
-// checkout begitu status confirmed.
-export async function getRegistrationStatus(registrationId: string) {
-  const { data } = await supabaseAdmin
+type ReconcileResult = { status: string | null; bibNumber: string | null };
+
+// FIX UTAMANYA ADA DI SINI: dipanggil dari CheckoutClient (polling otomatis
+// + tombol "Cek status sekarang"). Kalau status di DB masih pending_payment,
+// fungsi ini AKTIF nanya langsung ke Midtrans lewat Core API — nggak cuma
+// pasrah nunggu webhook yang mungkin gagal terkirim.
+export async function reconcilePaymentStatus(registrationId: string): Promise<ReconcileResult> {
+  console.log(`[reconcilePaymentStatus] dipanggil untuk registrationId=${registrationId}`);
+
+  const { data: registration, error } = await supabaseAdmin
     .from("registrations")
-    .select("status, bib_number")
+    .select("id, status, midtrans_order_id, bib_number")
     .eq("id", registrationId)
     .single();
 
-  if (!data) return null;
+  if (error || !registration) {
+    console.error("[reconcilePaymentStatus] registrasi tidak ditemukan:", error);
+    return { status: null, bibNumber: null };
+  }
 
-  return { status: data.status as string, bibNumber: data.bib_number as string | null };
+  console.log(
+    `[reconcilePaymentStatus] status DB saat ini: ${registration.status}, midtrans_order_id: ${registration.midtrans_order_id}`,
+  );
+
+  if (!registration.midtrans_order_id || registration.status !== "pending_payment") {
+    return {
+      status: registration.status as string,
+      bibNumber: registration.bib_number as string | null,
+    };
+  }
+
+  try {
+    const midtransStatus = await snap.transaction.status(registration.midtrans_order_id);
+    console.log("[reconcilePaymentStatus] respons dari Midtrans:", midtransStatus);
+
+    const result = await applyTransactionStatus({
+      orderId: midtransStatus.order_id,
+      transactionStatus: midtransStatus.transaction_status,
+      fraudStatus: midtransStatus.fraud_status,
+    });
+
+    console.log("[reconcilePaymentStatus] hasil applyTransactionStatus:", result);
+
+    if (result.ok) {
+      return { status: result.status, bibNumber: result.bibNumber };
+    }
+  } catch (err) {
+    // Wajar terjadi kalau transaksinya belum pernah di-charge sama sekali
+    // di sisi Midtrans. Bukan error fatal — tapi kalau kamu YAKIN sudah
+    // bayar dan ini tetap muncul, itu tandanya order_id di DB kamu beda
+    // sama yang tercatat di Midtrans (kemungkinan sisa dari percobaan lama).
+    console.warn("[reconcilePaymentStatus] gagal ambil status dari Midtrans:", err);
+  }
+
+  return {
+    status: registration.status as string,
+    bibNumber: registration.bib_number as string | null,
+  };
 }

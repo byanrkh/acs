@@ -6,7 +6,7 @@ import Button from "@/components/Button";
 import {
   checkAndExpireIfPastDeadline,
   createSnapTransaction,
-  getRegistrationStatus,
+  reconcilePaymentStatus,
 } from "@/libs/actions/checkout";
 import { getRegistrationFee } from "@/libs/config/pricing";
 import { SpecialGhotic, spaceMono } from "@/libs/Font";
@@ -112,8 +112,10 @@ export default function CheckoutClient({
   }, []);
 
   async function pollOnce() {
-    const latest = await getRegistrationStatus(registration.id);
-    if (latest && latest.status !== "pending_payment") {
+    // reconcilePaymentStatus AKTIF nanya ke Midtrans (bukan cuma baca DB),
+    // jadi tetap bisa nyelamatin status walau webhook gagal terkirim.
+    const latest = await reconcilePaymentStatus(registration.id);
+    if (latest.status && latest.status !== "pending_payment") {
       setStatus(latest.status);
       if (latest.bibNumber) setBibNumber(latest.bibNumber);
       setWaitingConfirmation(false);
@@ -122,10 +124,9 @@ export default function CheckoutClient({
     return false;
   }
 
-  // Polling setelah user selesai/tertunda di popup Snap, nunggu webhook
-  // Midtrans update status di database (maks ~2 menit). Cek pertama LANGSUNG
-  // (nggak nunggu 5 detik dulu), biar kalau webhook udah lebih dulu sampai
-  // duluan, UI-nya nggak perlu nunggu lama buat kelihatan.
+  // Polling setelah user selesai/tertunda di popup Snap, nunggu Midtrans
+  // benar-benar mencatat pembayarannya (maks ~2 menit). Cek pertama LANGSUNG
+  // (nggak nunggu 5 detik dulu).
   useEffect(() => {
     if (!waitingConfirmation) return;
 
@@ -161,17 +162,10 @@ export default function CheckoutClient({
     }
 
     window.snap.pay(token, {
-      // onSuccess/onPending TIDAK langsung menandai pembayaran sukses di UI —
-      // status yang ditampilkan tetap menunggu konfirmasi dari webhook
-      // (sumber kebenaran ada di database, bukan dari callback client-side
-      // yang bisa saja dimanipulasi). Callback ini cuma memicu polling.
       onSuccess: () => setWaitingConfirmation(true),
       onPending: () => setWaitingConfirmation(true),
       onError: () => setErrorMessage("Pembayaran gagal, coba lagi."),
       onClose: () => {
-        // User nutup popup tanpa nyelesein — kalau dia sempat bayar duluan
-        // sebelum nutup, tetap kita cek sekali ke server siapa tau webhook-nya
-        // udah sampai duluan sebelum sempat nge-trigger onSuccess.
         startTransition(async () => {
           await pollOnce();
         });
