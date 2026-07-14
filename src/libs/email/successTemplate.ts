@@ -19,7 +19,18 @@ export function buildSuccessEmailHtml(data: SuccessEmailData) {
             Pembayaran kamu sudah kami terima dan pendaftaran kamu resmi
             terkonfirmasi. Sampai ketemu di garis start!
           </p>
-
+<div style="text-align:center;margin:20px 20px;">
+  <img
+    src="cid:qrcode_tiket"
+    alt="QR Code tiket"
+    width="200"
+    height="200"
+    style="display:block;margin:0 auto;border:4px solid #000;"
+  />
+  <p style="margin:8px 0 0;font-size:11px;color:#999;">
+    Tunjukkan QR code ini saat pengambilan race pack
+  </p>
+</div>
           <div style="border:4px solid #000;background:#FFD400;padding:20px;text-align:center;margin-bottom:20px;">
             <p style="margin:0;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#000;">Nomor BIB kamu</p>
             <p style="margin:6px 0 0;font-size:32px;font-weight:900;color:#000;">${data.bibNumber}</p>

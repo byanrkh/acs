@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/libs/supabase/server";
 import { resend, EMAIL_FROM } from "@/libs/email/resend";
 import { buildSuccessEmailHtml } from "@/libs/email/successTemplate";
 import { parseOrderId } from "@/libs/midtrans/orderId";
+import { generateQrCodeBuffer } from "@/libs/email/qrcode";
 
 export type RegistrationStatus = "pending_payment" | "confirmed" | "cancelled" | "expired";
 
@@ -96,27 +97,37 @@ export async function applyTransactionStatus({
 
   // Email Ke-2 (konfirmasi + nomor BIB) — sekali per registrasi.
   if (newStatus === "confirmed" && !registration.success_email_sent_at) {
-    try {
-      await resend.emails.send({
-        from: EMAIL_FROM,
-        to: registration.email,
-        subject: `Pembayaran dikonfirmasi — Nomor BIB kamu: ${registration.bib_number}`,
-        html: buildSuccessEmailHtml({
-          namaLengkap: registration.nama_lengkap,
-          bibNumber: registration.bib_number ?? "-",
-        }),
-      });
+  try {
+    const validationUrl = `${process.env.NEXT_PUBLIC_APP_URL}/admin/validasi/${registration.id}`;
+    const qrCodeBuffer = await generateQrCodeBuffer(validationUrl);
 
-      await supabaseAdmin
-        .from("registrations")
-        .update({ success_email_sent_at: new Date().toISOString() })
-        .eq("id", registration.id);
+    await resend.emails.send({
+      from: EMAIL_FROM,
+      to: registration.email,
+      subject: `Pembayaran dikonfirmasi — Nomor BIB kamu: ${registration.bib_number}`,
+      html: buildSuccessEmailHtml({
+        namaLengkap: registration.nama_lengkap,
+        bibNumber: registration.bib_number ?? "-",
+      }),
+      attachments: [
+        {
+          filename: "qrcode.png",
+          content: qrCodeBuffer,
+          contentId: "qrcode_tiket", // ← field yang benar, bukan "cid"
+        },
+      ],
+    });
 
-      console.log(`[applyTransactionStatus] email ke-2 terkirim ke ${registration.email}`);
-    } catch (emailError) {
-      console.error("[applyTransactionStatus] gagal kirim email ke-2:", emailError);
-    }
+    await supabaseAdmin
+      .from("registrations")
+      .update({ success_email_sent_at: new Date().toISOString() })
+      .eq("id", registration.id);
+
+    console.log(`[applyTransactionStatus] email ke-2 + QR terkirim ke ${registration.email}`);
+  } catch (emailError) {
+    console.error("[applyTransactionStatus] gagal kirim email ke-2:", emailError);
   }
+}
 
   return { ok: true, status: newStatus, bibNumber: registration.bib_number };
 }
