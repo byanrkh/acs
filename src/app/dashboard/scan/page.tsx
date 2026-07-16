@@ -1,0 +1,225 @@
+"use client";
+
+import { useEffect, useRef, useState, useTransition } from "react";
+import {
+  lookupRegistrationByScan,
+  markRacePackTaken,
+  type ScanResult,
+} from "@/libs/actions/admin";
+import { SpecialGhotic, spaceMono } from "@/libs/Font";
+import { cn } from "@/libs/cn";
+
+const SCANNER_ELEMENT_ID = "acs-qr-scanner";
+
+export default function ScanPage() {
+  const [result, setResult] = useState<ScanResult | null>(null);
+  const [scannerActive, setScannerActive] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const [takenJustNow, setTakenJustNow] = useState(false);
+  const lastScannedRef = useRef<string | null>(null);
+  const scannerRef = useRef<import("html5-qrcode").Html5Qrcode | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function startScanner() {
+      const { Html5Qrcode } = await import("html5-qrcode");
+      if (cancelled) return;
+
+      const scanner = new Html5Qrcode(SCANNER_ELEMENT_ID);
+      scannerRef.current = scanner;
+
+      try {
+        await scanner.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          (decodedText) => {
+            if (decodedText === lastScannedRef.current) return;
+            lastScannedRef.current = decodedText;
+            setTakenJustNow(false);
+            startTransition(async () => {
+              const res = await lookupRegistrationByScan(decodedText);
+              setResult(res);
+            });
+          },
+          () => {
+            // diabaikan — dipanggil terus tiap frame walau QR belum kedeteksi
+          },
+        );
+        setScannerActive(true);
+      } catch (err) {
+        console.error("Gagal mengaktifkan kamera:", err);
+      }
+    }
+
+    startScanner();
+
+    return () => {
+      cancelled = true;
+      scannerRef.current
+        ?.stop()
+        .then(() => scannerRef.current?.clear())
+        .catch(() => {});
+    };
+  }, []);
+
+  function handleScanAgain() {
+    lastScannedRef.current = null;
+    setResult(null);
+    setTakenJustNow(false);
+  }
+
+  function handleMarkTaken() {
+    if (!result?.ok) return;
+    startTransition(async () => {
+      const res = await markRacePackTaken(result.registration.id);
+      if (res.ok) {
+        setTakenJustNow(true);
+        setResult({
+          ok: true,
+          registration: {
+            ...result.registration,
+            race_pack_taken_at: res.race_pack_taken_at,
+          },
+        });
+      }
+    });
+  }
+
+  return (
+    <div className="mx-auto max-w-md">
+      <h1
+        className={cn(
+          SpecialGhotic.className,
+          "text-xl uppercase tracking-tight sm:text-2xl",
+        )}
+      >
+        Scan QR Peserta
+      </h1>
+      <p className="mt-2 text-sm text-black/60">
+        Arahkan kamera ke QR code yang ada di email konfirmasi peserta.
+      </p>
+
+      <div className="mt-6">
+        <div
+          id={SCANNER_ELEMENT_ID}
+          className="min-h-[280px] overflow-hidden border-4 border-black bg-black"
+        />
+        {!scannerActive && (
+          <p className="mt-2 text-xs text-black/50">
+            Mengaktifkan kamera... pastikan browser diizinkan mengakses kamera.
+          </p>
+        )}
+      </div>
+
+      {isPending && (
+        <p
+          className={cn(
+            spaceMono.className,
+            "mt-6 text-xs uppercase tracking-widest text-black/50",
+          )}
+        >
+          Mencari data peserta...
+        </p>
+      )}
+
+      {result && !isPending && (
+        <div className="mt-6">
+          {result.ok ? (
+            <div className="border-4 border-black bg-white p-5 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
+              <div className="border-2 border-black bg-[#FFD400] px-3 py-2 text-center">
+                <p
+                  className={cn(
+                    spaceMono.className,
+                    "text-[10px] uppercase tracking-widest",
+                  )}
+                >
+                  Nomor BIB
+                </p>
+                <p className={cn(SpecialGhotic.className, "text-3xl")}>
+                  {result.registration.bib_number ?? "-"}
+                </p>
+              </div>
+
+              <dl className="mt-4 space-y-2 text-sm">
+                <Row label="Nama" value={result.registration.nama_lengkap} />
+                <Row label="Nama di BIB" value={result.registration.nama_bib} />
+                <Row label="Kategori" value={result.registration.kategori} />
+                {result.registration.kategori === "pelajar" ? (
+                  <Row label="NISN" value={result.registration.nisn ?? "-"} />
+                ) : (
+                  <Row
+                    label="NIK (4 digit akhir)"
+                    value={result.registration.nik_terakhir ?? "-"}
+                  />
+                )}
+                <Row
+                  label="Ukuran Jersey"
+                  value={result.registration.ukuran_jersey}
+                />
+                <Row
+                  label="Jenis Kelamin"
+                  value={result.registration.jenis_kelamin}
+                />
+                <Row
+                  label="Golongan Darah"
+                  value={result.registration.golongan_darah}
+                />
+                <Row label="Telepon" value={result.registration.telepon} />
+                <Row
+                  label="Kontak Darurat"
+                  value={`${result.registration.kontak_darurat_nama} (${result.registration.kontak_darurat_telepon})`}
+                />
+                {result.registration.riwayat_penyakit && (
+                  <Row
+                    label="Riwayat Penyakit"
+                    value={result.registration.riwayat_penyakit}
+                  />
+                )}
+              </dl>
+
+              <div className="mt-4 border-t-2 border-black/10 pt-4">
+                {result.registration.race_pack_taken_at ? (
+                  <p className="border-2 border-[#1F4B33] bg-[#1F4B33]/10 px-3 py-2 text-xs font-bold text-[#1F4B33]">
+                    {takenJustNow
+                      ? "Berhasil ditandai sudah diambil."
+                      : "Race pack sudah pernah diambil sebelumnya."}
+                  </p>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleMarkTaken}
+                    className="w-full border-4 border-black bg-[#7ED957] px-4 py-2.5 text-xs font-bold uppercase tracking-widest shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
+                  >
+                    Tandai race pack sudah diambil
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : (
+            <p className="border-4 border-[#D91E36] bg-[#D91E36]/10 p-4 text-sm font-bold text-[#D91E36]">
+              {result.error}
+            </p>
+          )}
+
+          <button
+            type="button"
+            onClick={handleScanAgain}
+            className="mt-4 w-full border-2 border-black bg-white px-4 py-2 text-xs font-bold uppercase tracking-widest hover:bg-black hover:text-white sm:w-auto"
+          >
+            Scan berikutnya
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between gap-4 border-b border-black/10 pb-2">
+      <dt className="shrink-0 text-black/50">{label}</dt>
+      <dd className="text-right font-medium">{value}</dd>
+    </div>
+  );
+}
