@@ -6,7 +6,7 @@ import { resend, EMAIL_FROM } from "@/libs/email/resend";
 import { buildInvoiceEmailHtml } from "@/libs/email/invoiceTemplate";
 import { getRegistrationFee } from "@/libs/config/pricing";
 import { buildOrderId } from "@/libs/midtrans/orderId";
-import { applyTransactionStatus } from "@/libs/midtrans/appleStatusUpdate";
+import { applyTransactionStatus } from "@/libs/midtrans/applyStatusUpdate";
 
 const PAYMENT_DURATION_HOURS = 24;
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
