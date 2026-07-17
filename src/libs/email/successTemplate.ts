@@ -32,7 +32,7 @@ export function buildSuccessEmailHtml(data: SuccessEmailData) {
       <tr>
         <td style="padding:0 0 16px;text-align:center;">
           <span style="display:inline-block;background:#FFD400;border:3px solid #000;padding:6px 16px;font-size:11px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;color:#000;">
-            E-Tiket Resmi
+            E-Ticket ACS
           </span>
         </td>
       </tr>
@@ -127,7 +127,7 @@ export function buildSuccessEmailHtml(data: SuccessEmailData) {
     <table role="presentation" width="100%" style="max-width:560px;margin:14px auto 0;border-collapse:collapse;">
       <tr>
         <td style="text-align:center;font-size:11px;color:#999;">
-          ACS 2026: Archipelapace · Bagian dari Quatrolympic
+          ACS 2026: Archipelapace · Part of <a href="https://quatrolympic.com" target="_blank" style="color:#998">Quatrolympic</a>
         </td>
       </tr>
     </table>
