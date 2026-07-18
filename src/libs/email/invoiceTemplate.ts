@@ -63,7 +63,7 @@ export function buildInvoiceEmailHtml(data: InvoiceEmailData) {
           </table>
 
           <p style="margin:0 0 20px;font-size:13px;color:#D91E36;font-weight:bold;">
-            Bayar sebelum ${formatDeadline(data.paymentExpiresAt)}, atau pendaftaran otomatis kedaluwarsa.
+            Silahkan lakukan pembayaran sebelum ${formatDeadline(data.paymentExpiresAt)}, Pendaftaran akan otomatis kedaluwarsa jika melewati batas waktu tersebut..
           </p>
 
           <a href="${data.paymentUrl}" style="display:inline-block;background:#FFD400;color:#000;font-weight:900;text-decoration:none;padding:14px 28px;border:4px solid #000;text-transform:uppercase;letter-spacing:0.5px;">

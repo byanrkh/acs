@@ -7,6 +7,7 @@ import { buildSuccessEmailHtml } from "@/libs/email/successTemplate";
 import { buildInvoiceEmailHtml } from "@/libs/email/invoiceTemplate";
 import { generateQrCodeBuffer } from "@/libs/email/qrcode";
 import { getRegistrationFee } from "@/libs/config/pricing";
+import { logAuditEvent } from "@/libs/actions/logs";
 
 export type ScanResult =
   | {
@@ -86,12 +87,26 @@ export async function markRacePackTaken(registrationId: string) {
     .from("registrations")
     .update({ race_pack_taken_at: new Date().toISOString() })
     .eq("id", registrationId)
-    .select("race_pack_taken_at")
+    .select("race_pack_taken_at, nama_lengkap, nama_bib, bib_number, kategori, email")
     .single();
 
   if (error || !data) {
     return { ok: false as const, error: "Gagal update status pengambilan race pack." };
   }
+
+  await logAuditEvent({
+    actorEmail: admin.email,
+    action: "race_pack_taken",
+    description: `Menandai race pack diambil oleh ${data.nama_lengkap} (BIB ${data.bib_number ?? "-"})`,
+    registrationId,
+    metadata: {
+      nama_lengkap: data.nama_lengkap,
+      nama_bib: data.nama_bib,
+      bib_number: data.bib_number,
+      kategori: data.kategori,
+      email: data.email,
+    },
+  });
 
   return { ok: true as const, race_pack_taken_at: data.race_pack_taken_at as string };
 }
@@ -161,8 +176,35 @@ export async function resendRegistrationEmail(
     }
   } catch (err) {
     console.error("[resendRegistrationEmail] gagal kirim:", err);
+    await logAuditEvent({
+      actorEmail: admin.email,
+      action: "resend_email_failed",
+      description: `Gagal kirim ulang email untuk ${registration.nama_lengkap} (status: ${registration.status})`,
+      registrationId,
+      metadata: {
+        nama_lengkap: registration.nama_lengkap,
+        nama_bib: registration.nama_bib,
+        bib_number: registration.bib_number,
+        email: registration.email,
+        status: registration.status,
+      },
+    });
     return { ok: false, error: "Gagal mengirim email, coba lagi." };
   }
+
+  await logAuditEvent({
+    actorEmail: admin.email,
+    action: "resend_email",
+    description: `Kirim ulang email untuk ${registration.nama_lengkap} (status "${registration.status}")`,
+    registrationId,
+    metadata: {
+      nama_lengkap: registration.nama_lengkap,
+      nama_bib: registration.nama_bib,
+      bib_number: registration.bib_number,
+      email: registration.email,
+      status: registration.status,
+    },
+  });
 
   return { ok: true };
 }

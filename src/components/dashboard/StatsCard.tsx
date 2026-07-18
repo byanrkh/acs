@@ -50,12 +50,12 @@ export default function StatsCards({ stats }: { stats: Stats }) {
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-3">
       {cards.map((c) => (
         <div
           key={c.label}
           className={cn(
-            "border-4 border-black p-3 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:p-4",
+            "border-4 border-black p-3 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:p-6",
             c.bg,
           )}
         >

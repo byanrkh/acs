@@ -157,7 +157,7 @@ export default function RegistrationsTable({
 
       {/* Tabel — desktop */}
       <div className="mt-6 hidden overflow-x-auto border-4 border-black bg-white sm:block">
-        <table className="w-full min-w-[1000px] text-left text-sm">
+        <table className="w-full min-w-[1150px] text-left text-sm">
           <thead>
             <tr
               className={cn(
@@ -167,6 +167,7 @@ export default function RegistrationsTable({
             >
               <th className="px-3 py-3">BIB</th>
               <th className="px-3 py-3">Nama</th>
+              <th className="px-3 py-3">Nama di BIB</th>
               <th className="px-3 py-3">Email</th>
               <th className="px-3 py-3">Telepon</th>
               <th className="px-3 py-3">Kategori</th>
@@ -184,6 +185,7 @@ export default function RegistrationsTable({
               >
                 <td className="px-3 py-3 font-bold">{r.bib_number ?? "-"}</td>
                 <td className="px-3 py-3">{r.nama_lengkap}</td>
+                <td className="px-3 py-3 text-black/70">{r.nama_bib}</td>
                 <td className="px-3 py-3 text-black/70">{r.email}</td>
                 <td className="px-3 py-3 text-black/70">{r.telepon}</td>
                 <td className="px-3 py-3 capitalize">{r.kategori}</td>
@@ -226,7 +228,10 @@ export default function RegistrationsTable({
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-3 py-8 text-center text-black/40">
+                <td
+                  colSpan={10}
+                  className="px-3 py-8 text-center text-black/40"
+                >
                   Tidak ada data yang cocok.
                 </td>
               </tr>
@@ -267,6 +272,10 @@ export default function RegistrationsTable({
             <p className="text-xs text-black/60">{r.email}</p>
 
             <div className="mt-3 grid grid-cols-2 gap-y-1.5 text-xs">
+              <div className="col-span-2">
+                <span className="text-black/40">Nama di BIB: </span>
+                {r.nama_bib}
+              </div>
               <div>
                 <span className="text-black/40">Telp: </span>
                 {r.telepon}

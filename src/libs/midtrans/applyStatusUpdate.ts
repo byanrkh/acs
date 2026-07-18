@@ -4,6 +4,7 @@ import { resend, EMAIL_FROM } from "@/libs/email/resend";
 import { buildSuccessEmailHtml } from "@/libs/email/successTemplate";
 import { parseOrderId } from "@/libs/midtrans/orderId";
 import { generateQrCodeBuffer } from "@/libs/email/qrcode";
+import { logPaymentEvent } from "@/libs/actions/logs";
 
 export type RegistrationStatus = "pending_payment" | "confirmed" | "cancelled" | "expired";
 
@@ -39,20 +40,48 @@ export async function applyTransactionStatus({
   orderId,
   transactionStatus,
   fraudStatus,
+  source = "webhook",
+  paymentType,
+  grossAmount,
+  rawPayload,
 }: {
   orderId: string;
   transactionStatus: string;
   fraudStatus?: string;
+  source?: "webhook" | "reconcile";
+  paymentType?: string;
+  grossAmount?: string | number;
+  rawPayload?: Record<string, unknown>;
 }): Promise<ApplyResult> {
   const newStatus = mapTransactionStatus(transactionStatus, fraudStatus);
   if (!newStatus) {
     console.log(`[applyTransactionStatus] status "${transactionStatus}" diabaikan (tidak relevan)`);
+    await logPaymentEvent({
+      orderId,
+      source,
+      transactionStatus,
+      fraudStatus,
+      paymentType,
+      grossAmount,
+      statusApplied: null,
+      rawPayload,
+    });
     return { ok: false, reason: "status_diabaikan" };
   }
 
   const parsed = parseOrderId(orderId);
   if (!parsed) {
     console.error(`[applyTransactionStatus] order_id tidak dikenali formatnya: "${orderId}"`);
+    await logPaymentEvent({
+      orderId,
+      source,
+      transactionStatus,
+      fraudStatus,
+      paymentType,
+      grossAmount,
+      statusApplied: null,
+      rawPayload,
+    });
     return { ok: false, reason: "order_id_tidak_dikenali" };
   }
 
@@ -66,6 +95,17 @@ export async function applyTransactionStatus({
 
   if (fetchError || !registration) {
     console.error(`[applyTransactionStatus] registrasi tidak ditemukan: ${parsed.registrationId}`, fetchError);
+    await logPaymentEvent({
+      registrationId: parsed.registrationId,
+      orderId,
+      source,
+      transactionStatus,
+      fraudStatus,
+      paymentType,
+      grossAmount,
+      statusApplied: null,
+      rawPayload,
+    });
     return { ok: false, reason: "registrasi_tidak_ditemukan" };
   }
 
@@ -75,11 +115,33 @@ export async function applyTransactionStatus({
     console.warn(
       `[applyTransactionStatus] abaikan order_id lama "${orderId}" (order aktif: "${registration.midtrans_order_id}")`,
     );
+    await logPaymentEvent({
+      registrationId: registration.id,
+      orderId,
+      source,
+      transactionStatus,
+      fraudStatus,
+      paymentType,
+      grossAmount,
+      statusApplied: null,
+      rawPayload,
+    });
     return { ok: false, reason: "order_id_lama_diabaikan" };
   }
 
   // Jangan turunkan status yang udah final.
   if (registration.status === "confirmed" && newStatus !== "confirmed") {
+    await logPaymentEvent({
+      registrationId: registration.id,
+      orderId,
+      source,
+      transactionStatus,
+      fraudStatus,
+      paymentType,
+      grossAmount,
+      statusApplied: "confirmed",
+      rawPayload,
+    });
     return { ok: true, status: "confirmed", bibNumber: registration.bib_number };
   }
 
@@ -133,6 +195,18 @@ export async function applyTransactionStatus({
       console.error("[applyTransactionStatus] gagal kirim email ke-2:", emailError);
     }
   }
+
+  await logPaymentEvent({
+    registrationId: registration.id,
+    orderId,
+    source,
+    transactionStatus,
+    fraudStatus,
+    paymentType,
+    grossAmount,
+    statusApplied: newStatus,
+    rawPayload,
+  });
 
   return { ok: true, status: newStatus, bibNumber: registration.bib_number };
 }

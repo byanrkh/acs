@@ -100,18 +100,6 @@ export default function ScanPage() {
         Arahkan kamera ke QR code yang ada di email konfirmasi peserta.
       </p>
 
-      <div className="mt-6">
-        <div
-          id={SCANNER_ELEMENT_ID}
-          className="min-h-[280px] overflow-hidden border-4 border-black bg-black"
-        />
-        {!scannerActive && (
-          <p className="mt-2 text-xs text-black/50">
-            Mengaktifkan kamera... pastikan browser diizinkan mengakses kamera.
-          </p>
-        )}
-      </div>
-
       {isPending && (
         <p
           className={cn(
@@ -211,6 +199,17 @@ export default function ScanPage() {
           </button>
         </div>
       )}
+      <div className="mt-6">
+        <div
+          id={SCANNER_ELEMENT_ID}
+          className="min-h-[280px] overflow-hidden border-4 border-black bg-black"
+        />
+        {!scannerActive && (
+          <p className="mt-2 text-xs text-black/50">
+            Mengaktifkan kamera... pastikan browser diizinkan mengakses kamera.
+          </p>
+        )}
+      </div>
     </div>
   );
 }

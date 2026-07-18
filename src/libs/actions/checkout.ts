@@ -7,6 +7,7 @@ import { buildInvoiceEmailHtml } from "@/libs/email/invoiceTemplate";
 import { getRegistrationFee } from "@/libs/config/pricing";
 import { buildOrderId } from "@/libs/midtrans/orderId";
 import { applyTransactionStatus } from "@/libs/midtrans/applyStatusUpdate";
+import { logPaymentEvent } from "@/libs/actions/logs";
 
 const PAYMENT_DURATION_HOURS = 24;
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
@@ -85,6 +86,14 @@ export async function createSnapTransaction(
     console.error("Gagal update data pembayaran:", updateError);
     return { ok: false, error: "Gagal menyimpan data pembayaran." };
   }
+
+  await logPaymentEvent({
+    registrationId: registration.id,
+    orderId,
+    source: "checkout",
+    statusApplied: "pending_payment",
+    grossAmount,
+  });
 
   if (!registration.invoice_email_sent_at) {
     try {
@@ -183,6 +192,9 @@ export async function reconcilePaymentStatus(registrationId: string): Promise<Re
       orderId: midtransStatus.order_id,
       transactionStatus: midtransStatus.transaction_status,
       fraudStatus: midtransStatus.fraud_status,
+      source: "reconcile",
+      paymentType: midtransStatus.payment_type,
+      grossAmount: midtransStatus.gross_amount,
     });
 
     console.log("[reconcilePaymentStatus] hasil applyTransactionStatus:", result);

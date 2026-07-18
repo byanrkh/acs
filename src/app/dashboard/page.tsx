@@ -2,16 +2,23 @@ import { supabaseAdmin } from "@/libs/supabase/server";
 import { getRegistrationFee } from "@/libs/config/pricing";
 import StatsCards from "@/components/dashboard/StatsCard";
 import RegistrationsTable from "@/components/dashboard/RegistrationTable";
+import LogsPanel from "@/components/dashboard/LogsPanel";
+import { getAuditLogs, getPaymentLogs } from "@/libs/actions/logs";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const { data: registrations, error } = await supabaseAdmin
-    .from("registrations")
-    .select(
-      "id, nama_lengkap, email, telepon, kategori, ukuran_jersey, nama_bib, jenis_kelamin, golongan_darah, status, bib_number, race_pack_taken_at, created_at",
-    )
-    .order("created_at", { ascending: false });
+  const [{ data: registrations, error }, auditLogs, paymentLogs] =
+    await Promise.all([
+      supabaseAdmin
+        .from("registrations")
+        .select(
+          "id, nama_lengkap, email, telepon, kategori, ukuran_jersey, nama_bib, jenis_kelamin, golongan_darah, status, bib_number, race_pack_taken_at, created_at",
+        )
+        .order("created_at", { ascending: false }),
+      getAuditLogs(),
+      getPaymentLogs(),
+    ]);
 
   if (error) {
     return (
@@ -39,6 +46,7 @@ export default async function DashboardPage() {
     <div className="space-y-6 sm:space-y-8">
       <StatsCards stats={stats} />
       <RegistrationsTable registrations={data} />
+      <LogsPanel auditLogs={auditLogs} paymentLogs={paymentLogs} />
     </div>
   );
 }

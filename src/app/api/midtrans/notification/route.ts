@@ -19,6 +19,7 @@ export async function POST(req: NextRequest) {
   const signatureKey = body.signature_key as string | undefined;
   const transactionStatus = body.transaction_status as string | undefined;
   const fraudStatus = body.fraud_status as string | undefined;
+  const paymentType = body.payment_type as string | undefined;
 
   if (!orderId || !statusCode || !grossAmount || !signatureKey || !transactionStatus) {
     console.error("[midtrans webhook] payload tidak lengkap:", body);
@@ -41,6 +42,10 @@ export async function POST(req: NextRequest) {
     orderId,
     transactionStatus,
     fraudStatus,
+    source: "webhook",
+    paymentType,
+    grossAmount,
+    rawPayload: body,
   });
 
   console.log(`[midtrans webhook] hasil applyTransactionStatus:`, result);
