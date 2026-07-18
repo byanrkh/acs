@@ -450,7 +450,7 @@ export default function RegistrationForm() {
                 label="Nama kontak darurat"
                 name="kontakDaruratNama"
                 type="text"
-                placeholder="Nama orang tua / wali"
+                placeholder="Nama"
                 value={form.kontakDaruratNama}
                 onChange={handleInputChange}
                 error={errors.kontakDaruratNama}
