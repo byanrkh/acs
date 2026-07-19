@@ -43,7 +43,6 @@ export default function Countdown() {
 
   return (
     <section className="relative overflow-hidden border-y-4 border-black bg-[#FF5A1F]">
-      {/* tekstur polkadot — inline style, pure CSS */}
       <div
         aria-hidden
         className="absolute inset-0"

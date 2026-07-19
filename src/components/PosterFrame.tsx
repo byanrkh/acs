@@ -1,10 +1,10 @@
 import { SpecialGhotic } from "@/libs/Font";
 import { cn } from "@/libs/cn";
+import Image from "next/image";
 
 export default function PosterFrame() {
   return (
     <div className="relative mx-auto w-fit">
-      {/* blok dekoratif polkadot — pure inline style, bukan utility custom */}
       <div
         aria-hidden
         className="absolute -bottom-6 -right-6 h-full w-full rotate-3 border-4 border-black bg-[#FFD400]"
@@ -27,17 +27,13 @@ export default function PosterFrame() {
               Poster
             </span>
           </div>
-          {/*
-            Ganti placeholder di atas dengan poster asli, contoh:
-            import Image from "next/image";
-            <Image
-              src="https://cdn.quatrolympic.com/nama-file-poster.jpg"
-              alt="Poster ACS 2026: Archipelapace"
-              fill
-              className="object-cover"
-              priority
-            />
-          */}
+          <Image
+            src="https://cdn.quatrolympic.com/DSC05068.JPG"
+            alt="Poster ACS 2026: Archipelapace"
+            fill
+            className="object-cover hover:scale-105 duration-200"
+            priority
+          />
         </div>
 
         <span

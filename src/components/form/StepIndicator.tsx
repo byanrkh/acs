@@ -5,7 +5,7 @@ import { SpecialGhotic, spaceMono } from "@/libs/Font";
 
 type StepIndicatorProps = {
   steps: string[];
-  current: number; // 1-based
+  current: number;
 };
 
 export default function StepIndicator({ steps, current }: StepIndicatorProps) {

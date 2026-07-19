@@ -100,20 +100,15 @@ export default function CheckoutClient({
     if (status !== "pending_payment") setSnapToken(null);
   }, [status]);
 
-  // Self-heal: kalau deadline lewat pas halaman dibuka tapi status masih
-  // pending_payment (webhook belum sempat jalan), sinkronkan manual.
   useEffect(() => {
     if (status !== "pending_payment") return;
     startTransition(async () => {
       const result = await checkAndExpireIfPastDeadline(registration.id);
       if (result) setStatus(result);
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function pollOnce() {
-    // reconcilePaymentStatus AKTIF nanya ke Midtrans (bukan cuma baca DB),
-    // jadi tetap bisa nyelamatin status walau webhook gagal terkirim.
     const latest = await reconcilePaymentStatus(registration.id);
     if (latest.status && latest.status !== "pending_payment") {
       setStatus(latest.status);
@@ -124,9 +119,6 @@ export default function CheckoutClient({
     return false;
   }
 
-  // Polling setelah user selesai/tertunda di popup Snap, nunggu Midtrans
-  // benar-benar mencatat pembayarannya (maks ~2 menit). Cek pertama LANGSUNG
-  // (nggak nunggu 5 detik dulu).
   useEffect(() => {
     if (!waitingConfirmation) return;
 

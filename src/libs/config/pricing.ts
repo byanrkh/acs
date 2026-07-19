@@ -1,6 +1,6 @@
 export const REGISTRATION_FEE = {
-  pelajar: 2_000,
-  umum: 200_000,
+  pelajar: 200_000,
+  umum: 225_000,
 } as const;
 
 export function getRegistrationFee(kategori: "pelajar" | "umum") {
