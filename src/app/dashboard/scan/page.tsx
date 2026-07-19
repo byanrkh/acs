@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import {
   lookupRegistrationByScan,
   markRacePackTaken,
@@ -11,6 +11,15 @@ import { cn } from "@/libs/cn";
 
 const SCANNER_ELEMENT_ID = "acs-qr-scanner";
 
+// --- Konfigurasi HID Barcode Scanner (mis. HC-P10) ---
+// Scanner fisik mengetik karakter dengan jeda sangat pendek (biasanya <10ms
+// antar karakter). Kalau jeda antar-keystroke melebihi ambang ini, buffer
+// dianggap bukan bagian dari satu scan yang sama dan direset.
+const SCAN_KEY_INTERVAL_THRESHOLD_MS = 50;
+// Panjang minimum supaya Enter "nyasar" (mis. dari tombol lain) tidak
+// dianggap hasil scan valid.
+const MIN_SCAN_LENGTH = 3;
+
 export default function ScanPage() {
   const [result, setResult] = useState<ScanResult | null>(null);
   const [scannerActive, setScannerActive] = useState(false);
@@ -19,6 +28,28 @@ export default function ScanPage() {
   const lastScannedRef = useRef<string | null>(null);
   const scannerRef = useRef<import("html5-qrcode").Html5Qrcode | null>(null);
 
+  // --- State buffer untuk HID scanner (bukan useState agar tidak re-render
+  // tiap keystroke; HID scanner bisa kirim puluhan keydown per detik) ---
+  const hidBufferRef = useRef("");
+  const hidLastKeyTimeRef = useRef(0);
+
+  // Jalur validasi bersama: dipakai baik oleh kamera (html5-qrcode) maupun
+  // oleh HID barcode scanner, supaya keduanya konsisten dan tidak dobel logic.
+  const processScannedCode = useCallback((rawCode: string) => {
+    const decodedText = rawCode.trim();
+    if (!decodedText) return;
+    if (decodedText === lastScannedRef.current) return;
+
+    lastScannedRef.current = decodedText;
+    setTakenJustNow(false);
+    startTransition(async () => {
+      const res = await lookupRegistrationByScan(decodedText);
+      setResult(res);
+    });
+  }, []);
+
+  // --- Kamera / webcam (html5-qrcode) — TIDAK diubah selain memanggil
+  // processScannedCode() sebagai pengganti logic inline sebelumnya ---
   useEffect(() => {
     let cancelled = false;
 
@@ -34,13 +65,7 @@ export default function ScanPage() {
           { facingMode: "environment" },
           { fps: 10, qrbox: { width: 250, height: 250 } },
           (decodedText) => {
-            if (decodedText === lastScannedRef.current) return;
-            lastScannedRef.current = decodedText;
-            setTakenJustNow(false);
-            startTransition(async () => {
-              const res = await lookupRegistrationByScan(decodedText);
-              setResult(res);
-            });
+            processScannedCode(decodedText);
           },
           () => {
             // diabaikan — dipanggil terus tiap frame walau QR belum kedeteksi
@@ -61,7 +86,60 @@ export default function ScanPage() {
         .then(() => scannerRef.current?.clear())
         .catch(() => {});
     };
-  }, []);
+  }, [processScannedCode]);
+
+  // --- HID Barcode Scanner (mis. HC-P10) via USB Keyboard Emulation ---
+  // Listener global di background: tidak butuh fokus/klik elemen apa pun.
+  useEffect(() => {
+    function handleHidKeyDown(e: KeyboardEvent) {
+      // Jangan ganggu kalau fokus sedang di elemen form aktif (input/textarea/
+      // select/contentEditable) — jaga-jaga kalau halaman ini nanti punya
+      // field pencarian manual.
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        tag === "SELECT" ||
+        target?.isContentEditable
+      ) {
+        return;
+      }
+
+      const now = performance.now();
+      const delta = now - hidLastKeyTimeRef.current;
+      hidLastKeyTimeRef.current = now;
+
+      // Jeda kelamaan sebelum karakter ini -> bukan bagian dari scan yang
+      // sedang berjalan (kemungkinan ketikan manual panitia). Reset buffer.
+      if (
+        delta > SCAN_KEY_INTERVAL_THRESHOLD_MS &&
+        hidBufferRef.current.length > 0
+      ) {
+        hidBufferRef.current = "";
+      }
+
+      if (e.key === "Enter") {
+        const scanned = hidBufferRef.current.trim();
+        hidBufferRef.current = "";
+
+        if (scanned.length >= MIN_SCAN_LENGTH) {
+          e.preventDefault();
+          processScannedCode(scanned);
+        }
+        return;
+      }
+
+      // Hanya tampung karakter cetak tunggal (huruf/angka/simbol dari
+      // scanner). Tombol non-karakter (Shift, Ctrl, Alt, dll) diabaikan.
+      if (e.key.length === 1) {
+        hidBufferRef.current += e.key;
+      }
+    }
+
+    window.addEventListener("keydown", handleHidKeyDown);
+    return () => window.removeEventListener("keydown", handleHidKeyDown);
+  }, [processScannedCode]);
 
   function handleScanAgain() {
     lastScannedRef.current = null;
@@ -97,7 +175,8 @@ export default function ScanPage() {
         Scan QR Peserta
       </h1>
       <p className="mt-2 text-sm text-black/60">
-        Arahkan kamera ke QR code yang ada di email konfirmasi peserta.
+        Arahkan kamera ke QR code, atau scan langsung pakai barcode scanner
+        fisik.
       </p>
 
       {isPending && (
