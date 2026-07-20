@@ -88,27 +88,28 @@ export default function InformationPage() {
 
             <div className="mt-4 space-y-4 text-sm leading-relaxed text-black/80 sm:text-base">
               <p>
-                Al Azhar Creative Space (ACS) 2026 hadir sebagai pre-event
-                Quatrolympic — sebuah ruang gerak yang mempertemukan semangat
-                kreativitas, kebersamaan, dan kepemudaan dalam satu perayaan
-                bersama. ACS mengajak setiap pesertanya untuk keluar dari
-                rutinitas, bergerak dengan niat, dan merayakan proses — bukan
-                sekadar kecepatan di garis akhir.
+                Al Azhar Creative Steps (ACS) 2026 merupakan sebuah manifestasi
+                kreativitas yang diselenggarakan oleh SMA Islam Al Azhar 4
+                sebagai wadah untuk mengembangkan potensi, minat, dan bakat
+                murid-murid melalui rangkaian kegiatan yang kolaboratif. ACS
+                telah menjadi agenda tahunan yang dinantikan, yang dilaksanakan
+                dengan semangat antusiasme tinggi oleh seluruh elemen sekolah
+                dan masyarakat.
               </p>
               <p>
-                Tahun ini, ACS mengangkat tema{" "}
+                Tahun ini, tema{" "}
                 <span className="font-bold">
                   &ldquo;Archipelapace: Rhythm of a Thousand Islands&rdquo;
                 </span>{" "}
-                — terinspirasi dari keberagaman dan kekayaan budaya Nusantara
-                yang tersebar di ribuan pulau. Setiap langkah dalam ACS 2026
-                adalah simbol perjalanan mempersatukan warna, cerita, dan
-                semangat anak muda Indonesia dalam satu irama yang sama.
-              </p>
-              <p>
-                Terbuka untuk pelajar maupun umum, ACS 2026 bukan sekadar lomba
-                lari — melainkan ruang untuk saling terhubung, tumbuh bersama
-                komunitas, dan menciptakan kenangan yang berarti.
+                dipilih untuk merefleksikan keberagaman dan keharmonisan
+                Nusantara yang kaya akan nilai budaya. Tema ini
+                merepresentasikan perpaduan antara Archipelago (kepulauan) dan
+                Pace (kecepatan lari), yang melambangkan semangat persatuan
+                dalam gerak yang dinamis. Melalui rangkaian kegiatan ini, kami
+                berkomitmen untuk menumbuhkan rasa percaya diri, kreativitas,
+                serta kesadaran generasi muda untuk mengenal, menghargai, dan
+                mencintai kekayaan budaya Indonesia dalam bingkai gaya hidup
+                sehat.
               </p>
             </div>
 
@@ -151,6 +152,27 @@ export default function InformationPage() {
           </div>
         </section>
 
+        <section className="mt-16 sm:mt-24">
+          <div className="mb-8 sm:mb-10">
+            <span
+              className={cn(
+                spaceMono.className,
+                "text-xs uppercase tracking-widest text-[#FF5A1F]",
+              )}
+            >
+              Maps
+            </span>
+            <h2
+              className={cn(
+                SpecialGhotic.className,
+                "mt-2 text-3xl uppercase tracking-tight sm:text-4xl",
+              )}
+            >
+              VENUE & TRACK
+            </h2>
+          </div>
+        </section>
+
         {/* TIMELINE */}
         <section className="mt-16 sm:mt-24">
           <div className="mb-8 sm:mb-10">
@@ -160,7 +182,7 @@ export default function InformationPage() {
                 "text-xs uppercase tracking-widest text-[#FF5A1F]",
               )}
             >
-              Jangan sampai kelewatan
+              Timeline
             </span>
             <h2
               className={cn(
@@ -183,7 +205,7 @@ export default function InformationPage() {
                 "text-xs uppercase tracking-widest text-[#FF5A1F]",
               )}
             >
-              Baca sebelum daftar
+              Read before register!
             </span>
             <h2
               className={cn(
@@ -191,10 +213,10 @@ export default function InformationPage() {
                 "mt-2 text-3xl uppercase tracking-tight sm:text-4xl",
               )}
             >
-              Detail Informasi
+              Terms Of Service - ACS FUN RUN
             </h2>
           </div>
-
+          <p className="text-sm opacity-50 mb-5">Last Updated: 20/07/2026</p>
           <InfoAccordion />
         </section>
 
@@ -220,8 +242,7 @@ export default function InformationPage() {
               <br className="hidden sm:block" /> dari ACS 2026?
             </h2>
             <p className="relative mx-auto mt-4 max-w-md text-sm text-white/70 sm:text-base">
-              Amankan slot dan nomor BIB kamu sekarang, sebelum kuota kategori
-              favoritmu penuh.
+              Amankan slot dan nomor BIB kamu sekarang, sebelum penuh.
             </p>
             <div className="relative mt-8 flex flex-wrap justify-center gap-4">
               <Button href="/registration">Register Now</Button>

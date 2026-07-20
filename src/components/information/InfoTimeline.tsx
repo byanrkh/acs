@@ -3,7 +3,7 @@ import { cn } from "@/libs/cn";
 
 const timeline = [
   {
-    date: "1 February 2026",
+    date: "23 July 2026",
     title: "Pendaftaran Dibuka",
     desc: "Registrasi online resmi dibuka untuk kategori Pelajar dan Umum.",
     color: "bg-[#FFD400]",
@@ -19,12 +19,6 @@ const timeline = [
     title: "Hari Pelaksanaan",
     desc: "Puncak acara ACS 2026 — registrasi ulang, pemanasan bersama, lalu mulai berlari!",
     color: "bg-[#FF5A1F]",
-  },
-  {
-    date: "Setelah acara",
-    title: "E-Sertifikat & Dokumentasi",
-    desc: "E-sertifikat dan dokumentasi resmi dibagikan melalui email terdaftar.",
-    color: "bg-[#1F4B33]",
   },
 ];
 

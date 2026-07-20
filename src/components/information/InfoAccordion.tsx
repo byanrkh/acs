@@ -23,183 +23,127 @@ type Section = {
 
 const sections: Section[] = [
   {
-    id: "pendaftaran",
+    id: "Ketentuan Pendaftaran & Informasi Peserta",
     icon: "📋",
     accent: "bg-[#FF5A1F]",
-    title: "Pendaftaran",
+    title: "Ketentuan Pendaftaran & Informasi Peserta",
     content: (
-      <div className="space-y-3">
-        <p>
-          Pendaftaran ACS 2026 dibuka secara online melalui halaman{" "}
-          <span className="font-bold">Registration</span>. Isi data diri, pilih
-          kategori peserta, lalu selesaikan pembayaran untuk mengamankan slot
-          dan nomor BIB kamu.
-        </p>
-        <p>
-          Setiap peserta hanya berhak atas{" "}
-          <span className="font-bold">satu slot</span> pendaftaran. Pastikan
-          seluruh data — nama, NISN/NIK, dan nama yang ingin dicetak di BIB —
-          sudah benar sebelum submit, karena perubahan data setelah pembayaran
-          dikonfirmasi tidak dapat dijamin.
-        </p>
-        <p>
-          Slot terbatas dan dibuka dengan sistem{" "}
-          <span className="font-bold">first come, first served</span>. Begitu
-          kuota di suatu kategori penuh, pendaftaran kategori tersebut otomatis
-          ditutup — jadi jangan tunda-tunda pendaftaranmu.
-        </p>
-      </div>
+      <ul className="space-y-3 list-disc ml-5 text-justify">
+        <li>
+          Peserta wajib mengisi data diri dengan benar, akurat, dan lengkap
+          sesuai dengan kartu identitas resmi (KTP/Kartu Pelajar/Paspor) saat
+          melakukan pendaftaran.
+        </li>
+        <li>
+          Tiket yang terbit akan terikat langsung dengan identitas pendaftar.
+          Panitia berhak membatalkan pendaftaran jika ditemukan manipulasi data
+          atau informasi palsu.
+        </li>
+        <li>
+          Satu akun atau email dapat digunakan untuk membeli lebih dari satu
+          tiket, namun data setiap peserta run harus diisi secara individual dan
+          berbeda.
+        </li>
+      </ul>
     ),
   },
   {
-    id: "kategori",
+    id: "Sistem Pembayaran",
     icon: "🏷️",
     accent: "bg-[#FFD400]",
-    title: "Kategori & Biaya Registrasi",
+    title: "Sistem Pembayaran",
     content: (
-      <div className="space-y-4">
-        <p>
-          ACS 2026 terbuka untuk dua kategori peserta, masing-masing dengan alur
-          verifikasi dan biaya registrasi yang berbeda:
-        </p>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div className="border-2 border-black/20 bg-black/[0.03] p-4">
-            <p className="font-bold uppercase tracking-tight">Pelajar</p>
-            <p className="mt-1 text-sm text-black/70">
-              Untuk siswa/siswi aktif, verifikasi menggunakan 10 digit NISN.
-            </p>
-            <p className={cn(spaceMono.className, "mt-3 text-lg font-bold")}>
-              {formatRupiah(getRegistrationFee("pelajar"))}
-            </p>
-          </div>
-          <div className="border-2 border-black/20 bg-black/[0.03] p-4">
-            <p className="font-bold uppercase tracking-tight">Umum</p>
-            <p className="mt-1 text-sm text-black/70">
-              Untuk peserta umum, verifikasi menggunakan 4 digit akhir NIK.
-            </p>
-            <p className={cn(spaceMono.className, "mt-3 text-lg font-bold")}>
-              {formatRupiah(getRegistrationFee("umum"))}
-            </p>
-          </div>
-        </div>
-        <p className="text-sm text-black/60">
-          Biaya registrasi sudah termasuk race pack (jersey + nomor BIB) dan
-          e-sertifikat. Jersey tersedia ukuran S sampai XXL — cek size chart di
-          halaman pendaftaran sebelum memilih ukuran.
-        </p>
-      </div>
+      <ul className="space-y-3 list-disc ml-5 text-justify">
+        <li>
+          Pembayaran tiket dilakukan secara sah menggunakan metode pembayaran
+          yang tersedia melalui payment gateway resmi terintegrasi di website
+          kami.
+        </li>
+        <li>
+          Mata uang yang digunakan untuk seluruh transaksi adalah Rupiah (IDR).
+        </li>
+        <li>
+          Peserta wajib menyelesaikan pembayaran dalam batas waktu yang
+          ditentukan sistem. Jika melewati batas waktu, pesanan akan otomatis
+          dibatalkan.
+        </li>
+      </ul>
     ),
   },
   {
-    id: "peserta",
+    id: "Kebijakan Pengembalian Dana (Refund) & Pemindahtanganan Tiket",
     icon: "✅",
     accent: "bg-[#7ED957]",
-    title: "Ketentuan Umum Peserta",
+    title: "Kebijakan Pengembalian Dana (Refund) & Pemindahtanganan Tiket",
     content: (
-      <ul className="list-disc space-y-2 pl-5">
+      <ul className="space-y-3 list-disc ml-5 text-justify">
         <li>
-          Peserta wajib dalam kondisi sehat jasmani dan rohani pada hari
-          pelaksanaan acara.
+          <b>
+            Seluruh pembelian tiket ACS Fun Run bersifat final dan personal.
+          </b>
         </li>
         <li>
-          Wajib mengisi data kesehatan (golongan darah, riwayat penyakit) dan
-          kontak darurat dengan jujur saat pendaftaran — data ini krusial untuk
-          penanganan cepat tim medis jika dibutuhkan.
+          Tiket yang sudah sukses dibayar{" "}
+          <b>TIDAK DAPAT DIKEMBALIKAN (NON-REFUNDABLE)</b>, dibatalkan, atau
+          diuangkan kembali dengan alasan apapun dari pihak peserta.
         </li>
         <li>
-          Wajib menggunakan jersey resmi dan menyematkan nomor BIB di bagian
-          depan yang terlihat jelas selama acara berlangsung.
+          <b>
+            Tiket TIDAK DAPAT DIPINDAHTANGAN-KAN atau dialihkan kepada orang
+            lain dengan alasan apa pun
+          </b>
+          . Hak kepesertaan hanya berlaku untuk nama yang tertera saat
+          pendaftaran awal.
         </li>
         <li>
-          Race pack (jersey, BIB, dan perlengkapan lain) wajib diambil sendiri
-          oleh peserta pada jadwal pengambilan yang diinformasikan melalui email
-          — bawa QR code konfirmasi dan identitas diri.
-        </li>
-        <li>
-          Panitia berhak mendiskualifikasi peserta yang terbukti melanggar
-          ketentuan atau bertindak tidak sportif.
+          Apabila terjadi kendala teknis double payment (saldo terpotong dua
+          kali untuk satu pesanan yang sama), peserta dapat menghubungi
+          narahubung resmi panitia dengan melampirkan bukti transfer untuk
+          proses investigasi dan pengembalian manual.
         </li>
       </ul>
     ),
   },
   {
-    id: "pelaksana",
+    id: "Pembatalan atau Perubahan Acara (Force Majeure)",
     icon: "🧭",
     accent: "bg-[#1F4B33] text-white",
-    title: "Ketentuan Umum Pelaksana Acara",
+    title: "Pembatalan atau Perubahan Acara (Force Majeure)",
     content: (
-      <ul className="list-disc space-y-2 pl-5">
+      <ul className="space-y-3 list-disc ml-5 text-justify">
         <li>
-          Panitia berhak melakukan perubahan jadwal, rute, atau teknis
-          pelaksanaan apabila terjadi kondisi force majeure (cuaca ekstrem,
-          keadaan darurat, kebijakan pemerintah, dll).
+          Jika acara terpaksa ditunda atau diubah konsepnya akibat keadaan di
+          luar kendali panitia (Force Majeure seperti bencana alam, cuaca
+          ekstrem, kebijakan darurat pemerintah, atau izin keamanan), panitia
+          akan memberikan opsi penjadwalan ulang.
         </li>
         <li>
-          Segala perubahan akan diinformasikan sesegera mungkin melalui email
-          terdaftar dan kanal resmi ACS 2026.
-        </li>
-        <li>
-          Panitia menyediakan pos kesehatan dan tim medis di titik-titik
-          strategis sepanjang jalur acara.
-        </li>
-        <li>
-          Dokumentasi (foto/video) selama acara dapat digunakan panitia untuk
-          keperluan publikasi dan arsip resmi ACS 2026.
+          Kebijakan kompensasi atau pengembalian dana khusus akibat pembatalan
+          total dari pihak penyelenggara akan diumumkan secara terpisah melalui
+          saluran komunikasi resmi ACS.
         </li>
       </ul>
     ),
   },
   {
-    id: "penting",
+    id: "Kontak Kami",
     icon: "⚠️",
     accent: "bg-[#D91E36] text-white",
-    title: "Informasi Penting",
+    title: "Kontak Kami",
     content: (
       <div className="space-y-3">
         <p>
-          Biaya registrasi yang sudah dibayarkan{" "}
-          <span className="font-bold">
-            tidak dapat dikembalikan (non-refundable)
-          </span>{" "}
-          dan tidak dapat dipindahtangankan ke peserta lain dengan alasan apa
-          pun.
+          Jika Anda memiliki pertanyaan lebih lanjut mengenai ketentuan ini,
+          silakan hubungi panitia melalui:
         </p>
-        <p>
-          Pastikan email yang didaftarkan aktif — seluruh invoice, konfirmasi
-          pembayaran, nomor BIB, dan QR code tiket dikirim ke email tersebut.
-          Cek juga folder Spam/Promotions bila email tidak kunjung masuk.
-        </p>
-        <p>
-          Batas waktu pembayaran adalah{" "}
-          <span className="font-bold">24 jam</span> sejak invoice diterbitkan.
-          Jika melewati batas waktu, pendaftaran otomatis kedaluwarsa dan slot
-          akan dibuka kembali untuk peserta lain.
-        </p>
-      </div>
-    ),
-  },
-  {
-    id: "pelaksanaan",
-    icon: "🏁",
-    accent: "bg-black text-white",
-    title: "Pelaksanaan Lomba",
-    content: (
-      <div className="space-y-3">
-        <p>
-          Peserta wajib hadir di titik kumpul selambat-lambatnya{" "}
-          <span className="font-bold">45 menit sebelum</span> jadwal
-          keberangkatan untuk registrasi ulang dan pemanasan bersama.
-        </p>
-        <p>
-          Rute acara akan ditandai dengan jelas dan dijaga oleh volunteer di
-          setiap titik krusial. Ikuti arahan panitia dan petugas keamanan
-          sepanjang jalur.
-        </p>
-        <p>
-          Nomor BIB akan digunakan sebagai identitas utama peserta di garis
-          akhir untuk validasi kehadiran, pengambilan konsumsi, dan proses
-          penukaran e-sertifikat.
-        </p>
+        <ul className="space-y-3 list-disc ml-5 text-justify">
+          <li>
+            Email: <b>acs.projectalkp4@gmail.com</b>
+          </li>
+          <li>
+            WhatsApp: <b>...</b>
+          </li>
+        </ul>
       </div>
     ),
   },
