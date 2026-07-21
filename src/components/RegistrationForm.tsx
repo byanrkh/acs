@@ -289,7 +289,7 @@ export default function RegistrationForm() {
         return;
       }
 
-      router.push(`/checkout/${result.registrationId}`);
+      router.push(result.redirectPath ?? `/checkout/${result.registrationId}`);
     });
   }
 

@@ -21,7 +21,7 @@ export type RegistrationPayload = {
 };
 
 export type RegistrationResult =
-  | { ok: true; registrationId: string }
+  | { ok: true; registrationId: string; redirectPath?: string }
   | { ok: false; error: string; field?: keyof RegistrationPayload };
 
 function validatePayload(data: RegistrationPayload): RegistrationResult | null {

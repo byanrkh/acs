@@ -1,0 +1,1 @@
+export const QRIS_UNIQUE_CODE_MAX = 900;
