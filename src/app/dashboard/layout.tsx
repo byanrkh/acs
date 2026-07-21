@@ -18,7 +18,7 @@ export default async function DashboardLayout({
   return (
     <div className="min-h-screen bg-[#FDF6E9]">
       <header className="sticky top-0 z-40 border-b-4 border-[#dfd2b9] bg-[#FDF6E9]">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+        <div className="mx-auto block sm:flex max-w-7xl items-center justify-between px-6 py-4">
           <Link href="/" className="shrink-0">
             <Image
               src="https://cdn.quatrolympic.com/41028044-a720-48f0-b91c-74e271968c6e.png"
@@ -35,6 +35,9 @@ export default async function DashboardLayout({
             </Link>
             <Link href="/dashboard/scan" className="hover:text-[#FF5A1F]">
               Scan
+            </Link>
+            <Link href="/dashboard/qris" className="hover:text-[#FF5A1F]">
+              Qris
             </Link>
             <span className="hidden text-black/40 sm:inline">{user.email}</span>
             <LogoutButton />
