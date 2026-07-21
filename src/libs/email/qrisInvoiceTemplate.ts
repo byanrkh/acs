@@ -55,7 +55,7 @@ export function buildQrisInvoiceEmailHtml(data: QrisInvoiceData) {
               bukti transfer kamu:
             </p>
             <p style="text-align:center;margin:0 0 8px;">
-              
+              <a
                 href="${data.checkoutUrl}"
                 style="display:inline-block;border:3px solid #000;background:#1F4B33;color:#fff;padding:10px 20px;font-size:13px;font-weight:700;text-decoration:none;text-transform:uppercase;"
               >
