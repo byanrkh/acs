@@ -65,11 +65,16 @@ const golonganDarahOptions = [
 ];
 
 const jerseyOptions = [
+  { value: "XXS", label: "XXS" },
+  { value: "XS", label: "XS" },
   { value: "S", label: "S" },
   { value: "M", label: "M" },
   { value: "L", label: "L" },
   { value: "XL", label: "XL" },
-  { value: "XXL", label: "XXL" },
+  { value: "2XL", label: "2XL" },
+  { value: "3XL", label: "3XL" },
+  { value: "4XL", label: "4XL" },
+  { value: "5XL", label: "5XL" },
 ];
 
 const stepLabels = ["Data pribadi", "Data medis", "Jersey & lainnya"];
@@ -196,9 +201,6 @@ export default function RegistrationForm() {
     formTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  // goNext HANYA divalidasi terhadap step yang lagi aktif SEKARANG (via
-  // stepValidators[step]) — tidak pernah menyentuh validator step 3 sebelum
-  // step beneran berada di 3.
   function goNext() {
     if (isPending) return;
     if (step >= TOTAL_STEPS) return; // pengaman ekstra, seharusnya nggak pernah kepanggil di step 3
