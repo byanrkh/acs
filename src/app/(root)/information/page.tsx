@@ -4,6 +4,7 @@ import InfoAccordion from "@/components/information/InfoAccordion";
 import InfoTimeline from "@/components/information/InfoTimeline";
 import { spaceMono, SpecialGhotic } from "@/libs/Font";
 import { cn } from "@/libs/cn";
+import Link from "next/link";
 
 const quickFacts = [
   { label: "Tanggal Acara", value: "23 Agustus 2026", icon: "📅" },
@@ -124,8 +125,8 @@ export default function InformationPage() {
 
         {/* QUICK FACTS */}
         <section className="mt-10 sm:mt-14">
-          <div className="grid grid-cols-2 gap-4 ">
-            {quickFacts.map((fact, i) => (
+          <div className="grid grid-cols-1 gap-4">
+            {/* {quickFacts.map((fact, i) => (
               <div
                 key={fact.label}
                 className={cn(
@@ -148,7 +149,44 @@ export default function InformationPage() {
                   {fact.value}
                 </p>
               </div>
-            ))}
+            ))} */}
+            <div
+              className={cn(
+                "border-4 border-black rounded-xl bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-transform hover:-translate-y-1",
+              )}
+            >
+              <div className="relative p-4 sm:p-5 bg-emerald-600 rounded-tl-lg rounded-tr-lg border-b-4 border-black/50 text-center ">
+                <div
+                  className="absolute inset-0 opacity-15"
+                  style={{
+                    backgroundImage:
+                      "radial-gradient(rgba(0,0,0,0.6) 1.6px, transparent 1.6px)",
+                    backgroundSize: "22px 22px",
+                  }}
+                />
+                <p className="font-bold text-xl">PRICE LIST</p>
+              </div>
+              <div className="p-5 my-3 sm:p-6">
+                <div className="flex justify-between items-center">
+                  <p className="text-xl opacity-70 font-medium">Pelajar</p>
+                  <p className="text-2xl font-extrabold">Rp 200.000,00</p>
+                </div>
+                <hr className="my-3 border-b border-black/20" />
+                <div className="flex justify-between items-center">
+                  <p className="text-xl opacity-70 font-medium">Umum</p>
+                  <p className="text-2xl font-extrabold">Rp 225.000,00</p>
+                </div>
+              </div>
+              <hr className="border-b-2 border-black" />
+              <div className="relative p-5 bg-emerald-600 rounded-bl-lg rounded-br-lg">
+                <Link
+                  className="border-4 w-full text-lg bg-pink-500 hover:bg-pink-400 duration-150 flex items-center justify-center py-3 rounded-lg font-bold"
+                  href="/"
+                >
+                  Daftar
+                </Link>
+              </div>
+            </div>
           </div>
         </section>
 
