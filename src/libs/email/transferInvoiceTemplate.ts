@@ -1,4 +1,6 @@
-type QrisInvoiceData = {
+import { BANK_TRANSFER_INFO } from "@/libs/config/bankTransfer";
+
+type TransferInvoiceData = {
   namaLengkap: string;
   kategori: "pelajar" | "umum";
   ukuranJersey: string;
@@ -19,7 +21,7 @@ function formatRupiah(amount: number) {
   }).format(amount);
 }
 
-export function buildQrisInvoiceEmailHtml(data: QrisInvoiceData) {
+export function buildTransferInvoiceEmailHtml(data: TransferInvoiceData) {
   const kategoriLabel = KATEGORI_LABEL[data.kategori] ?? data.kategori;
 
   return `
@@ -39,9 +41,24 @@ export function buildQrisInvoiceEmailHtml(data: QrisInvoiceData) {
             </p>
             <p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:#000;">
               Terima kasih sudah mendaftar ACS 2026 kategori <strong>${kategoriLabel}</strong>
-              (ukuran jersey ${data.ukuranJersey}). Selesaikan pembayaran dengan scan QRIS,
-              lalu transfer <strong>PERSIS</strong> sejumlah di bawah ini (sudah termasuk kode unik):
+              (ukuran jersey ${data.ukuranJersey}). Selesaikan pembayaran dengan transfer
+              bank ke rekening di bawah ini, <strong>PERSIS</strong> sejumlah nominal yang
+              tertera (sudah termasuk kode unik):
             </p>
+            <div style="border:3px solid #000;background:#fff;padding:16px;text-align:center;margin-bottom:16px;">
+              <p style="margin:0;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#666;">
+                Transfer ke rekening
+              </p>
+              <p style="margin:6px 0 0;font-size:16px;font-weight:900;color:#000;text-transform:uppercase;">
+                ${BANK_TRANSFER_INFO.bankName}
+              </p>
+              <p style="margin:6px 0 0;font-size:22px;font-weight:900;letter-spacing:2px;color:#000;">
+                ${BANK_TRANSFER_INFO.accountNumber}
+              </p>
+              <p style="margin:4px 0 0;font-size:13px;color:#333;">
+                a.n. ${BANK_TRANSFER_INFO.accountHolder}
+              </p>
+            </div>
             <div style="border:3px solid #000;background:#FFD400;padding:16px;text-align:center;margin-bottom:16px;">
               <p style="margin:0;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#000;">
                 Total transfer
@@ -51,15 +68,15 @@ export function buildQrisInvoiceEmailHtml(data: QrisInvoiceData) {
               </p>
             </div>
             <p style="margin:0 0 16px;font-size:13px;line-height:1.6;color:#000;">
-              Setelah transfer, buka link di bawah ini untuk melihat QRIS dan mengunggah
-              bukti transfer kamu:
+              Setelah transfer, buka link di bawah ini untuk melihat detail rekening
+              dan mengunggah bukti transfer kamu:
             </p>
             <p style="text-align:center;margin:0 0 8px;">
               <a
                 href="${data.checkoutUrl}"
                 style="display:inline-block;border:3px solid #000;background:#1F4B33;color:#fff;padding:10px 20px;font-size:13px;font-weight:700;text-decoration:none;text-transform:uppercase;"
               >
-                Lihat QRIS &amp; Bayar
+                Lihat Detail & Bayar
               </a>
             </p>
             <p style="margin:16px 0 0;font-size:11px;color:#666;text-align:center;">

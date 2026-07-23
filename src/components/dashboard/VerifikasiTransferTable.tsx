@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { approveQrisPayment } from "@/libs/actions/qrisAdmin";
+import { approveTransferPayment } from "@/libs/actions/transferAdmin";
 import { spaceMono } from "@/libs/Font";
 import { cn } from "@/libs/cn";
 
@@ -24,7 +24,7 @@ function formatRupiah(amount: number) {
   }).format(amount);
 }
 
-export default function VerifikasiQrisTable({
+export default function VerifikasiTransferTable({
   registrations,
 }: {
   registrations: Row[];
@@ -41,7 +41,7 @@ export default function VerifikasiQrisTable({
     setErrorRow(null);
     setPendingId(id);
     startTransition(async () => {
-      const result = await approveQrisPayment(id);
+      const result = await approveTransferPayment(id);
       setPendingId(null);
       if (!result.ok) {
         setErrorRow({ id, message: result.error });
@@ -54,7 +54,7 @@ export default function VerifikasiQrisTable({
   if (rows.length === 0) {
     return (
       <div className="border-4 border-black bg-white p-6 text-center text-sm text-black/60 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-        Tidak ada pembayaran QRIS yang menunggu verifikasi.
+        Tidak ada pembayaran transfer yang menunggu verifikasi.
       </div>
     );
   }

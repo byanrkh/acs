@@ -2,8 +2,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getAdminUser } from "@/libs/supabase/serverAuth";
 import LogoutButton from "@/components/dashboard/LogoutButton";
-import { SpecialGhotic } from "@/libs/Font";
-import { cn } from "@/libs/cn";
 import Image from "next/image";
 
 export default async function DashboardLayout({
@@ -36,8 +34,8 @@ export default async function DashboardLayout({
             <Link href="/dashboard/scan" className="hover:text-[#FF5A1F]">
               Scan
             </Link>
-            <Link href="/dashboard/qris" className="hover:text-[#FF5A1F]">
-              Qris
+            <Link href="/dashboard/transfer" className="hover:text-[#FF5A1F]">
+              Transfer
             </Link>
             <span className="hidden text-black/40 sm:inline">{user.email}</span>
             <LogoutButton />

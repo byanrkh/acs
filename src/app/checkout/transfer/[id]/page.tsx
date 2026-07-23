@@ -3,6 +3,7 @@ import Container from "@/components/Container";
 import Button from "@/components/Button";
 import { supabaseAdmin } from "@/libs/supabase/server";
 import { getRegistrationFee } from "@/libs/config/pricing";
+import { BANK_TRANSFER_INFO } from "@/libs/config/bankTransfer";
 import { SpecialGhotic, spaceMono } from "@/libs/Font";
 import { cn } from "@/libs/cn";
 
@@ -14,7 +15,7 @@ function formatRupiah(amount: number) {
   }).format(amount);
 }
 
-export default async function QrisCheckoutPage({
+export default async function TransferCheckoutPage({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -39,7 +40,7 @@ export default async function QrisCheckoutPage({
       <Container>
         <div className="mx-auto max-w-lg">
           <span className="inline-block -rotate-2 border-4 border-black bg-[#FFD400] px-4 py-1.5 text-sm font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-            Checkout QRIS
+            Checkout Transfer Bank
           </span>
 
           <h1
@@ -52,7 +53,7 @@ export default async function QrisCheckoutPage({
               ? "Pembayaran berhasil"
               : registration.status === "waiting_verification"
                 ? "Menunggu verifikasi"
-                : "Scan & bayar"}
+                : "Transfer & bayar"}
           </h1>
 
           <div className="mt-8 border-4 border-black bg-white p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] sm:p-8">
@@ -93,16 +94,33 @@ export default async function QrisCheckoutPage({
               registration.status !== "waiting_verification" && (
                 <>
                   <p className="text-center text-sm text-black/70">
-                    Scan QRIS di bawah ini pakai e-wallet atau m-banking kamu.
+                    Transfer ke rekening di bawah ini pakai m-banking atau
+                    teller bank kamu.
                   </p>
 
-                  <div className="mx-auto mt-4 w-full max-w-xs border-4 border-black bg-white p-3">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={process.env.NEXT_PUBLIC_QRIS_IMAGE_URL ?? ""}
-                      alt="QRIS Statis ACS 2026"
-                      className="h-auto w-full"
-                    />
+                  <div className="mx-auto mt-4 w-full max-w-xs border-4 border-black bg-white p-5 text-center">
+                    <p className="text-xs uppercase tracking-widest text-black/50">
+                      Transfer ke rekening
+                    </p>
+                    <p
+                      className={cn(
+                        SpecialGhotic.className,
+                        "mt-2 text-xl uppercase text-black",
+                      )}
+                    >
+                      {BANK_TRANSFER_INFO.bankName}
+                    </p>
+                    <p
+                      className={cn(
+                        spaceMono.className,
+                        "mt-3 text-2xl tracking-widest text-black break-all",
+                      )}
+                    >
+                      {BANK_TRANSFER_INFO.accountNumber}
+                    </p>
+                    <p className="mt-2 text-sm text-black/70">
+                      a.n. {BANK_TRANSFER_INFO.accountHolder}
+                    </p>
                   </div>
 
                   <div className="mt-6 border-4 border-black bg-[#FFD400] p-4 text-center">
@@ -129,12 +147,12 @@ export default async function QrisCheckoutPage({
 
                   <p className="mt-4 text-center text-xs text-black/60">
                     Nominal harus sama persis. Kode unik dipakai buat
-                    mencocokkan pembayaranmu secara otomatis, jadi jangan
-                    dibulatkan.
+                    mencocokkan pembayaranmu secara manual oleh panitia, jadi
+                    jangan dibulatkan.
                   </p>
 
                   <Button
-                    href={`/checkout/qris/${registration.id}/upload`}
+                    href={`/checkout/transfer/${registration.id}/upload`}
                     variant="primary"
                     className="mt-6 w-full justify-center text-[#004D3D]"
                   >

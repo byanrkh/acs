@@ -1,7 +1,7 @@
 "use server";
 
 import { supabaseAdmin } from "@/libs/supabase/server";
-import { submitQrisRegistration } from "@/libs/actions/registrationQris";
+import { submitTransferRegistration } from "@/libs/actions/registrationTransfer";
 
 export type RegistrationPayload = {
   kategori: "pelajar" | "umum";
@@ -106,8 +106,8 @@ export async function submitRegistration(
   }
 
   const paymentMethod = process.env.NEXT_PUBLIC_PAYMENT_METHOD ?? "MIDTRANS";
-  if (paymentMethod === "QRIS_STATIS") {
-    return submitQrisRegistration(data, email);
+  if (paymentMethod === "BANK_TRANSFER") {
+    return submitTransferRegistration(data, email);
   }
 
   // 3) Simpan ke database dan ambil 'id' (UUID) baris baru

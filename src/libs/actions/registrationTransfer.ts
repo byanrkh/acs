@@ -2,14 +2,14 @@
 
 import { supabaseAdmin } from "@/libs/supabase/server";
 import { resend, EMAIL_FROM } from "@/libs/email/resend";
-import { buildQrisInvoiceEmailHtml } from "@/libs/email/qrisInvoiceTemplate";
+import { buildTransferInvoiceEmailHtml } from "@/libs/email/transferInvoiceTemplate";
 import { getRegistrationFee } from "@/libs/config/pricing";
-import { QRIS_UNIQUE_CODE_MAX } from "@/libs/config/qris";
+import { UNIQUE_CODE_MAX } from "@/libs/config/bankTransfer";
 import type { RegistrationPayload } from "@/libs/actions/registration";
 
 // Ambil nomor urut berikutnya berdasarkan nomor_urut tertinggi yang sudah
-// tersimpan, lalu diputar 1..QRIS_UNIQUE_CODE_MAX. Catatan: kalau ada dua
-// pendaftaran QRIS yang submit persis bersamaan, secara teori bisa dapat
+// tersimpan, lalu diputar 1..UNIQUE_CODE_MAX. Catatan: kalau ada dua
+// pendaftaran yang submit persis bersamaan, secara teori bisa dapat
 // nomor urut yang sama (race condition ringan) — untuk volume pendaftaran
 // event ini risikonya kecil, tapi kalau mau 100% aman bisa diganti pakai
 // Postgres sequence/lock di masa depan.
@@ -27,10 +27,10 @@ async function getNextNomorUrut(): Promise<number> {
   }
 
   const last = data?.nomor_urut ?? 0;
-  return (last % QRIS_UNIQUE_CODE_MAX) + 1;
+  return (last % UNIQUE_CODE_MAX) + 1;
 }
 
-export async function submitQrisRegistration(
+export async function submitTransferRegistration(
   data: RegistrationPayload,
   email: string,
 ): Promise<
@@ -68,12 +68,12 @@ export async function submitQrisRegistration(
     if (insertError.code === "23505") {
       return { ok: false, error: "Data ini sepertinya sudah pernah didaftarkan." };
     }
-    console.error("[submitQrisRegistration] gagal simpan registrasi:", insertError);
+    console.error("[submitTransferRegistration] gagal simpan registrasi:", insertError);
     return { ok: false, error: "Gagal menyimpan data, coba lagi." };
   }
 
   const registrationId = inserted.id as string;
-  const checkoutUrl = `${process.env.NEXT_PUBLIC_APP_URL}/checkout/qris/${registrationId}`;
+  const checkoutUrl = `${process.env.NEXT_PUBLIC_APP_URL}/checkout/transfer/${registrationId}`;
 
   try {
     await resend.emails.send({
@@ -84,7 +84,7 @@ export async function submitQrisRegistration(
         currency: "IDR",
         maximumFractionDigits: 0,
       }).format(grossAmount)}`,
-      html: buildQrisInvoiceEmailHtml({
+      html: buildTransferInvoiceEmailHtml({
         namaLengkap: data.namaLengkap.trim(),
         kategori: data.kategori,
         ukuranJersey: data.ukuranJersey,
@@ -93,12 +93,12 @@ export async function submitQrisRegistration(
       }),
     });
   } catch (emailError) {
-    console.error("[submitQrisRegistration] gagal mengirim email invoice:", emailError);
+    console.error("[submitTransferRegistration] gagal mengirim email invoice:", emailError);
   }
 
   return {
     ok: true,
     registrationId,
-    redirectPath: `/checkout/qris/${registrationId}`,
+    redirectPath: `/checkout/transfer/${registrationId}`,
   };
 }

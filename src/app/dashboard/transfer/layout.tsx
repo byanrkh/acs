@@ -3,7 +3,7 @@ import { getAdminUser } from "@/libs/supabase/serverAuth";
 import { SpecialGhotic } from "@/libs/Font";
 import { cn } from "@/libs/cn";
 
-export default async function VerifikasiQrisLayout({
+export default async function VerifikasiTransferLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const user = await getAdminUser();
@@ -21,7 +21,7 @@ export default async function VerifikasiQrisLayout({
             "text-lg uppercase tracking-tight text-black",
           )}
         >
-          Verifikasi QRIS
+          Verifikasi Transfer Bank
         </h1>
         <p className="text-xs text-black/50">{user.email}</p>
       </header>

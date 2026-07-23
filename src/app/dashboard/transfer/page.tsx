@@ -1,10 +1,10 @@
 import { supabaseAdmin } from "@/libs/supabase/server";
 import { getRegistrationFee } from "@/libs/config/pricing";
-import VerifikasiQrisTable from "@/components/dashboard/VerifikasiQrisTable";
+import VerifikasiTransferTable from "@/components/dashboard/VerifikasiTransferTable";
 
 export const dynamic = "force-dynamic";
 
-export default async function VerifikasiQrisPage() {
+export default async function VerifikasiTransferPage() {
   const { data: registrations, error } = await supabaseAdmin
     .from("registrations")
     .select(
@@ -26,5 +26,5 @@ export default async function VerifikasiQrisPage() {
     grossAmount: getRegistrationFee(r.kategori) + (r.nomor_urut ?? 0),
   }));
 
-  return <VerifikasiQrisTable registrations={data} />;
+  return <VerifikasiTransferTable registrations={data} />;
 }

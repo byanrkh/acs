@@ -7,17 +7,17 @@ import { buildSuccessEmailHtml } from "@/libs/email/successTemplate";
 import { generateQrCodeBuffer } from "@/libs/email/qrcode";
 import { logAuditEvent, logPaymentEvent } from "@/libs/actions/logs";
 
-export type ApproveQrisResult =
+export type ApproveTransferResult =
   | { ok: true; bibNumber: string | null }
   | { ok: false; error: string };
 
-// Dipakai dari /admin/verifikasi-qris. Pola-nya sengaja disamakan dengan
+// Dipakai dari /dashboard/transfer. Pola-nya sengaja disamakan dengan
 // applyTransactionStatus (jalur Midtrans) — update status → baca ulang row
 // → bib_number sudah otomatis terisi dari trigger DB → kirim email e-ticket
 // yang sama persis dengan yang dipakai jalur Midtrans.
-export async function approveQrisPayment(
+export async function approveTransferPayment(
   registrationId: string,
-): Promise<ApproveQrisResult> {
+): Promise<ApproveTransferResult> {
   const admin = await getAdminUser();
   if (!admin) {
     return { ok: false, error: "Sesi login sudah habis, silakan login ulang." };
@@ -50,7 +50,7 @@ export async function approveQrisPayment(
     .single();
 
   if (updateError || !updated) {
-    console.error("[approveQrisPayment] gagal update status:", updateError);
+    console.error("[approveTransferPayment] gagal update status:", updateError);
     return { ok: false, error: "Gagal mengubah status peserta." };
   }
 
@@ -82,14 +82,14 @@ export async function approveQrisPayment(
         .update({ success_email_sent_at: new Date().toISOString() })
         .eq("id", registrationId);
     } catch (emailError) {
-      console.error("[approveQrisPayment] gagal kirim email e-ticket:", emailError);
+      console.error("[approveTransferPayment] gagal kirim email e-ticket:", emailError);
     }
   }
 
   await logAuditEvent({
     actorEmail: admin.email,
-    action: "approve_qris_payment",
-    description: `Approve pembayaran QRIS untuk ${registration.nama_lengkap} (BIB ${updated.bib_number ?? "-"})`,
+    action: "approve_transfer_payment",
+    description: `Approve pembayaran transfer bank untuk ${registration.nama_lengkap} (BIB ${updated.bib_number ?? "-"})`,
     registrationId,
     metadata: {
       nama_lengkap: registration.nama_lengkap,
@@ -102,7 +102,7 @@ export async function approveQrisPayment(
 
   await logPaymentEvent({
     registrationId,
-    orderId: `QRIS-${registrationId}`,
+    orderId: `TRANSFER-${registrationId}`,
     source: "checkout",
     statusApplied: "confirmed",
   });
