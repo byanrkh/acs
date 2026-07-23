@@ -125,31 +125,7 @@ export default function InformationPage() {
 
         {/* QUICK FACTS */}
         <section className="mt-10 sm:mt-14">
-          <div className="grid grid-cols-1 gap-4">
-            {/* {quickFacts.map((fact, i) => (
-              <div
-                key={fact.label}
-                className={cn(
-                  "border-4 border-black bg-white p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-transform hover:-translate-y-1 sm:p-5",
-                  i % 2 === 0 ? "sm:rotate-0" : "sm:rotate-0",
-                )}
-              >
-                <span aria-hidden className="text-2xl sm:text-3xl">
-                  {fact.icon}
-                </span>
-                <p
-                  className={cn(
-                    spaceMono.className,
-                    "mt-3 text-[10px] uppercase tracking-widest text-black/50",
-                  )}
-                >
-                  {fact.label}
-                </p>
-                <p className="mt-1 text-sm font-bold leading-snug sm:text-base">
-                  {fact.value}
-                </p>
-              </div>
-            ))} */}
+          <div className="grid grid-cols-2 gap-4">
             <div
               className={cn(
                 "border-4 border-black rounded-xl bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-transform hover:-translate-y-1",
@@ -177,8 +153,7 @@ export default function InformationPage() {
                   <p className="text-2xl font-extrabold">Rp 225.000,00</p>
                 </div>
               </div>
-              <hr className="border-b-2 border-black" />
-              <div className="relative p-5 bg-emerald-600 rounded-bl-lg rounded-br-lg">
+              <div className="relative p-5 border-t-4 border-black/50 bg-emerald-600 rounded-bl-lg rounded-br-lg">
                 <Link
                   className="border-4 w-full text-lg bg-pink-500 hover:bg-pink-400 duration-150 flex items-center justify-center py-3 rounded-lg font-bold"
                   href="/"
@@ -187,6 +162,11 @@ export default function InformationPage() {
                 </Link>
               </div>
             </div>
+            <div
+              className={cn(
+                "border-4 border-black rounded-xl bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-transform hover:-translate-y-1",
+              )}
+            ></div>
           </div>
         </section>
 
