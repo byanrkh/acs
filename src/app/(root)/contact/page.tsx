@@ -228,22 +228,20 @@ export default function ContactPage() {
               >
                 📝 Registrasi & Pendaftaran
               </p>
-              <p className="mt-2 text-sm leading-relaxed text-black/70">
-                <ul className="list-disc ml-5">
-                  <li>
-                    <b>Cara Daftar</b>: Isi formulir di website resmi, pilih
-                    kategori (Pelajar/Umum), dan selesaikan pembayaran.
-                  </li>
-                  <li>
-                    <b>Ubah Data</b>: Data yang sudah dikirim dan dibayar tidak
-                    dapat diubah (termasuk ukuran jersey).
-                  </li>
-                  <li>
-                    <b>Pengalihan Tiket</b>: Nomor BIB / tiket bersifat personal
-                    dan tidak dapat dipindahtangankan atau diperjualbelikan.
-                  </li>
-                </ul>
-              </p>
+              <ul className="list-disc ml-5 mt-2 text-sm leading-relaxed text-black/70">
+                <li>
+                  <b>Cara Daftar</b>: Isi formulir di website resmi, pilih
+                  kategori (Pelajar/Umum), dan selesaikan pembayaran.
+                </li>
+                <li>
+                  <b>Ubah Data</b>: Data yang sudah dikirim dan dibayar tidak
+                  dapat diubah (termasuk ukuran jersey).
+                </li>
+                <li>
+                  <b>Pengalihan Tiket</b>: Nomor BIB / tiket bersifat personal
+                  dan tidak dapat dipindahtangankan atau diperjualbelikan.
+                </li>
+              </ul>
             </div>
             <div className="border-4 border-black bg-white p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:p-6">
               <p
@@ -254,21 +252,18 @@ export default function ContactPage() {
               >
                 💸 Pembatalan & Refund
               </p>
-              <p className="mt-2 text-sm leading-relaxed text-black/70">
-                <ul className="list-disc ml-5">
-                  <li>
-                    <b>Kebijakan Refund</b>: Biaya pendaftaran bersifat Final &
-                    Non-Refundable (tidak bisa dikembalikan) dengan alasan apa
-                    pun dari pihak peserta.
-                  </li>
-                  <li>
-                    <b>Pembatalan Acara</b>: Jika ada pergeseran/pembatalan
-                    jadwal dari panitia karena force majeure, informasi
-                    pengembalian dana atau jadwal baru akan diumumkan via email
-                    resmi.
-                  </li>
-                </ul>
-              </p>
+              <ul className="list-disc ml-5 mt-2 text-sm leading-relaxed text-black/70">
+                <li>
+                  <b>Kebijakan Refund</b>: Biaya pendaftaran bersifat Final &
+                  Non-Refundable (tidak bisa dikembalikan) dengan alasan apa pun
+                  dari pihak peserta.
+                </li>
+                <li>
+                  <b>Pembatalan Acara</b>: Jika ada pergeseran/pembatalan jadwal
+                  dari panitia karena force majeure, informasi pengembalian dana
+                  atau jadwal baru akan diumumkan via email resmi.
+                </li>
+              </ul>
             </div>
             <div className="border-4 border-black bg-white p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:p-6">
               <p
@@ -279,19 +274,16 @@ export default function ContactPage() {
               >
                 🎽 Pengambilan Racepack (RPC)
               </p>
-              <p className="mt-2 text-sm leading-relaxed text-black/70">
-                <ul className="list-disc ml-5">
-                  <li>
-                    <b>Jadwal & Lokasi</b>: Detail RPC akan dikirim melalui
-                    email konfirmasi dan Instagram resmi mendekati hari H.
-                  </li>
-                  <li>
-                    <b>Syarat Pengambilan</b>: Membawa Email Konfirmasi
-                    Pendaftaran dan Kartu Identitas Asli (KTP/SIM/Kartu
-                    Pelajar).
-                  </li>
-                </ul>
-              </p>
+              <ul className="list-disc ml-5 mt-2 text-sm leading-relaxed text-black/70">
+                <li>
+                  <b>Jadwal & Lokasi</b>: 21-22 Agustus 2026, Lapangan Indoor
+                  SMAI Al Azhar 4
+                </li>
+                <li>
+                  <b>Syarat Pengambilan</b>: Membawa Email Konfirmasi
+                  Pendaftaran dan Kartu Identitas Asli (KTP/SIM/Kartu Pelajar).
+                </li>
+              </ul>
             </div>
             <div className="border-4 border-black bg-white p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:p-6">
               <p
