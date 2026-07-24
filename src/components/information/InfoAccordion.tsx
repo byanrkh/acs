@@ -141,7 +141,7 @@ const sections: Section[] = [
             Email: <b>acs.projectalkp4@gmail.com</b>
           </li>
           <li>
-            WhatsApp: <b>+62 856-9770-3733</b>
+            WhatsApp: <b>+62 856-9770-3733 (Gading)</b>
           </li>
         </ul>
       </div>
