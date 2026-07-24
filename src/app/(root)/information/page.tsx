@@ -5,6 +5,7 @@ import InfoTimeline from "@/components/information/InfoTimeline";
 import { spaceMono, SpecialGhotic } from "@/libs/Font";
 import { cn } from "@/libs/cn";
 import Link from "next/link";
+import Image from "next/image";
 
 const quickFacts = [
   { label: "Tanggal Acara", value: "23 Agustus 2026", icon: "📅" },
@@ -168,7 +169,12 @@ export default function InformationPage() {
               )}
             >
               <div className="p-4 sm:p-5 w-full h-full relative bg-emerald-600 rounded-lg ">
-                <div className="bg-white h-full rounded-md border-4"></div>
+                <img
+                  className="rounded-md border-4"
+                  src={
+                    "https://cdn.quatrolympic.com/1784867389144-a03ed0d9-bd5b-4f9d-9ec4-0eac46e42761_1.jpg"
+                  }
+                />
               </div>
             </div>
           </div>

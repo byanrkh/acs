@@ -15,6 +15,8 @@ type ButtonProps = {
   className?: string;
   type?: "button" | "submit";
   disabled?: boolean;
+  /** Set true for links that go outside the site (e.g. Google Drive) — opens in a new tab. */
+  external?: boolean;
 };
 
 const variantClasses: Record<Variant, string> = {
@@ -37,6 +39,7 @@ export default function Button({
   className,
   type = "button",
   disabled = false,
+  external = false,
 }: ButtonProps) {
   const classes = cn(
     SpecialGhotic.className,
@@ -49,6 +52,20 @@ export default function Button({
     sizeClasses[size],
     className,
   );
+
+  if (href && external) {
+    return (
+      <a
+        href={href}
+        onClick={onClick}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={classes}
+      >
+        {children}
+      </a>
+    );
+  }
 
   if (href) {
     return (
