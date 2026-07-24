@@ -294,9 +294,8 @@ export default function ContactPage() {
               >
                 🎒 Penitipan Barang (Drop Baggage)
               </p>
-              <p className="mt-2 text-sm leading-relaxed text-black/70">
-                <ul className="list-disc ml-5">
-                  {/* <li>
+              <ul className="list-disc ml-5">
+                {/* <li>
                     <b>Fasilitas</b>: Gratis di area Race Village khusus peserta
                     ber-BIB resmi.
                   </li>
@@ -309,9 +308,8 @@ export default function ContactPage() {
                     laptop, ziplock/dokumen penting, dll.). Panitia tidak
                     bertanggung jawab atas kerusakan/kehilangan barang berharga.
                   </li> */}
-                  <li>Informasi Menyusul</li>
-                </ul>
-              </p>
+                <li>Informasi Menyusul</li>
+              </ul>
             </div>
           </div>
         </section>
