@@ -25,13 +25,13 @@ export default function Hero() {
 
             <div className="mt-6 font-medium leading-relaxed text-black md:text-[17px]">
               <p>
-                Selamat datang di Al Azhar Creative Steps (ACS) 2026! Sebagai
-                wadah tahunan kreativitas murid SMA Islam Al Azhar 4, tahun ini
-                kami hadir mengusung tema "ARCHIPELAPACE: Rhythm of a Thousand
-                Islands"—sebuah perpaduan harmonis antara kekayaan Archipelago
-                dan semangat Pace gaya hidup sehat. Mari salurkan potensi,
-                bakat, dan semangat persatuan generasi muda dalam perayaan
-                budaya Nusantara yang dinamis!
+                Al Azhar Creative Steps (ACS) 2026 merupakan sebuah manifestasi
+                kreativitas yang diselenggarakan oleh SMA Islam Al Azhar 4
+                sebagai wadah untuk mengembangkan potensi, minat, dan bakat
+                murid-murid melalui rangkaian kegiatan yang kolaboratif. ACS
+                telah menjadi agenda tahunan yang dinantikan, yang dilaksanakan
+                dengan semangat antusiasme tinggi oleh seluruh elemen sekolah
+                dan masyarakat.
               </p>
             </div>
 
