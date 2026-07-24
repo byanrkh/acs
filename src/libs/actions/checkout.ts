@@ -203,10 +203,6 @@ export async function reconcilePaymentStatus(registrationId: string): Promise<Re
       return { status: result.status, bibNumber: result.bibNumber };
     }
   } catch (err) {
-    // Wajar terjadi kalau transaksinya belum pernah di-charge sama sekali
-    // di sisi Midtrans. Bukan error fatal — tapi kalau kamu YAKIN sudah
-    // bayar dan ini tetap muncul, itu tandanya order_id di DB kamu beda
-    // sama yang tercatat di Midtrans (kemungkinan sisa dari percobaan lama).
     console.warn("[reconcilePaymentStatus] gagal ambil status dari Midtrans:", err);
   }
 

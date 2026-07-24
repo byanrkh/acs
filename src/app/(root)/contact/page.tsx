@@ -142,8 +142,11 @@ export default function ContactPage() {
                     {c.label}
                   </p>
                   <p className="break-all text-sm font-bold text-black group-hover:text-[#FF5A1F]">
-                    {c.value}
+                    {c.value}{" "}
+                    {c.value === "+62 856-9770-3733" ? "(Gading)" : null}
                   </p>
+
+                  {/* {c.value === "+62 856-9770-3733" ? "(Gading)" : null} */}
                 </a>
               );
             })}

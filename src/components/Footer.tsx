@@ -13,7 +13,7 @@ const footerLinks = [
 
 const contacts = [
   { label: "Email", value: "acs.projectalkp4@gmail.com" },
-  { label: "WhatsApp", value: "-" },
+  { label: "WhatsApp", value: "+62 856-9770-3733 (Gading)" },
   { label: "Instagram", value: "@acs.projectid" },
 ];
 
