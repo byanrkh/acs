@@ -125,7 +125,7 @@ export default function InformationPage() {
 
         {/* QUICK FACTS */}
         <section className="mt-10 sm:mt-14">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div
               className={cn(
                 "border-4 border-black rounded-xl bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-transform hover:-translate-y-1",
@@ -166,7 +166,11 @@ export default function InformationPage() {
               className={cn(
                 "border-4 border-black rounded-xl bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-transform hover:-translate-y-1",
               )}
-            ></div>
+            >
+              <div className="p-4 sm:p-5 w-full h-full relative bg-emerald-600 rounded-lg ">
+                <div className="bg-white h-full rounded-md border-4"></div>
+              </div>
+            </div>
           </div>
         </section>
 

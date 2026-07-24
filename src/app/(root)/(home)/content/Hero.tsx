@@ -25,11 +25,13 @@ export default function Hero() {
 
             <div className="mt-6 font-medium leading-relaxed text-black md:text-[17px]">
               <p>
-                Lorem, ipsum dolor sit amet consectetur adipisicing elit.
-                Veritatis, corrupti aliquid cum excepturi tempore rem commodi
-                libero a iure sed! Placeat enim porro iste sint accusamus
-                recusandae obcaecati quam asperiores vel culpa ratione maxime
-                dicta mollitia facilis, quidem accusantium odit.
+                Selamat datang di Al Azhar Creative Steps (ACS) 2026! Sebagai
+                wadah tahunan kreativitas murid SMA Islam Al Azhar 4, tahun ini
+                kami hadir mengusung tema "ARCHIPELAPACE: Rhythm of a Thousand
+                Islands"—sebuah perpaduan harmonis antara kekayaan Archipelago
+                dan semangat Pace gaya hidup sehat. Mari salurkan potensi,
+                bakat, dan semangat persatuan generasi muda dalam perayaan
+                budaya Nusantara yang dinamis!
               </p>
             </div>
 
