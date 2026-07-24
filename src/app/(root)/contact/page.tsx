@@ -290,11 +290,6 @@ export default function ContactPage() {
                     Pendaftaran dan Kartu Identitas Asli (KTP/SIM/Kartu
                     Pelajar).
                   </li>
-                  <li>
-                    <b>Diwakilkan</b>: Bisa, wajib membawa Email Konfirmasi,
-                    fotokopi/foto ID peserta, dan Surat Kuasa bertanda tangan
-                    peserta.
-                  </li>
                 </ul>
               </p>
             </div>
