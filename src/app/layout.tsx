@@ -10,6 +10,14 @@ export const metadata: Metadata = {
     "Al Azhar Creative Steps (ACS) 2026 oleh SMA Islam Al Azhar 4 kembali hadir dengan tema “ARCHIPELAPACE: Rhythm of a Thousand Islands”. Wadah kreativitas, bakat, dan budaya Nusantara dalam bingkai gaya hidup sehat!",
   keywords: [
     "quatrolympic",
+    "ACS",
+    "Al Azhar Creative Steps",
+    "Funrun",
+    "Fun run",
+    "running",
+    "running event",
+    "event",
+    "energy",
     "Al Azhar 4",
     "Al Azhar",
     "SMAI Al Azhar 4",
@@ -17,8 +25,9 @@ export const metadata: Metadata = {
     "quatrolympic 19",
   ],
   openGraph: {
-    siteName: "Quatrolympic",
-    title: "Quatrolympic 19: “Harmony Of Heritage” ✨🌺",
+    siteName: "ACS 2026",
+    title:
+      "Al Azhar Creative Steps: “ARCHIPELAPACE: Rhythm Of A Thousand Islands” ✨🌺",
     description:
       "Al Azhar Creative Steps (ACS) 2026 oleh SMA Islam Al Azhar 4 kembali hadir dengan tema “ARCHIPELAPACE: Rhythm of a Thousand Islands”. Wadah kreativitas, bakat, dan budaya Nusantara dalam bingkai gaya hidup sehat!",
     locale: "en-ID",
@@ -26,7 +35,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Quatrolympic 19: “Harmony Of Heritage” ✨🌺",
+    title:
+      "Al Azhar Creative Steps: “ARCHIPELAPACE: Rhythm Of A Thousand Islands” ✨🌺",
     description:
       "Al Azhar Creative Steps (ACS) 2026 oleh SMA Islam Al Azhar 4 kembali hadir dengan tema “ARCHIPELAPACE: Rhythm of a Thousand Islands”. Wadah kreativitas, bakat, dan budaya Nusantara dalam bingkai gaya hidup sehat!",
     creator: "@quatrolympic",
