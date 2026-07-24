@@ -43,7 +43,7 @@ const contactCards = [
 
 const faqs = [
   {
-    q: "Mau tanya status pembayaran, harus kemana?",
+    q: "📝 Registrasi & Pendaftaran",
     a: "Sertakan nama lengkap & email yang dipakai saat daftar supaya panitia bisa cek datanya dengan cepat.",
   },
   {
@@ -219,24 +219,113 @@ export default function ContactPage() {
           </div>
 
           <div className="space-y-4">
-            {faqs.map((faq) => (
-              <div
-                key={faq.q}
-                className="border-4 border-black bg-white p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:p-6"
+            <div className="border-4 border-black bg-white p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:p-6">
+              <p
+                className={cn(
+                  SpecialGhotic.className,
+                  "text-base uppercase tracking-tight text-black sm:text-lg",
+                )}
               >
-                <p
-                  className={cn(
-                    SpecialGhotic.className,
-                    "text-base uppercase tracking-tight text-black sm:text-lg",
-                  )}
-                >
-                  {faq.q}
-                </p>
-                <p className="mt-2 text-sm leading-relaxed text-black/70">
-                  {faq.a}
-                </p>
-              </div>
-            ))}
+                📝 Registrasi & Pendaftaran
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-black/70">
+                <ul className="list-disc ml-5">
+                  <li>
+                    <b>Cara Daftar</b>: Isi formulir di website resmi, pilih
+                    kategori (Pelajar/Umum), dan selesaikan pembayaran.
+                  </li>
+                  <li>
+                    <b>Ubah Data</b>: Data yang sudah dikirim dan dibayar tidak
+                    dapat diubah (termasuk ukuran jersey).
+                  </li>
+                  <li>
+                    <b>Pengalihan Tiket</b>: Nomor BIB / tiket bersifat personal
+                    dan tidak dapat dipindahtangankan atau diperjualbelikan.
+                  </li>
+                </ul>
+              </p>
+            </div>
+            <div className="border-4 border-black bg-white p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:p-6">
+              <p
+                className={cn(
+                  SpecialGhotic.className,
+                  "text-base uppercase tracking-tight text-black sm:text-lg",
+                )}
+              >
+                💸 Pembatalan & Refund
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-black/70">
+                <ul className="list-disc ml-5">
+                  <li>
+                    <b>Kebijakan Refund</b>: Biaya pendaftaran bersifat Final &
+                    Non-Refundable (tidak bisa dikembalikan) dengan alasan apa
+                    pun dari pihak peserta.
+                  </li>
+                  <li>
+                    <b>Pembatalan Acara</b>: Jika ada pergeseran/pembatalan
+                    jadwal dari panitia karena force majeure, informasi
+                    pengembalian dana atau jadwal baru akan diumumkan via email
+                    resmi.
+                  </li>
+                </ul>
+              </p>
+            </div>
+            <div className="border-4 border-black bg-white p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:p-6">
+              <p
+                className={cn(
+                  SpecialGhotic.className,
+                  "text-base uppercase tracking-tight text-black sm:text-lg",
+                )}
+              >
+                🎽 Pengambilan Racepack (RPC)
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-black/70">
+                <ul className="list-disc ml-5">
+                  <li>
+                    <b>Jadwal & Lokasi</b>: Detail RPC akan dikirim melalui
+                    email konfirmasi dan Instagram resmi mendekati hari H.
+                  </li>
+                  <li>
+                    <b>Syarat Pengambilan</b>: Membawa Email Konfirmasi
+                    Pendaftaran dan Kartu Identitas Asli (KTP/SIM/Kartu
+                    Pelajar).
+                  </li>
+                  <li>
+                    <b>Diwakilkan</b>: Bisa, wajib membawa Email Konfirmasi,
+                    fotokopi/foto ID peserta, dan Surat Kuasa bertanda tangan
+                    peserta.
+                  </li>
+                </ul>
+              </p>
+            </div>
+            <div className="border-4 border-black bg-white p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:p-6">
+              <p
+                className={cn(
+                  SpecialGhotic.className,
+                  "text-base uppercase tracking-tight text-black sm:text-lg",
+                )}
+              >
+                🎒 Penitipan Barang (Drop Baggage)
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-black/70">
+                <ul className="list-disc ml-5">
+                  {/* <li>
+                    <b>Fasilitas</b>: Gratis di area Race Village khusus peserta
+                    ber-BIB resmi.
+                  </li>
+                  <li>
+                    <b>Waktu</b>: Buka 1 jam sebelum flag-off dan wajib diambil
+                    maksimal 1 jam setelah acara selesai.
+                  </li>
+                  <li>
+                    <b>Ketentuan</b>: Dilarang menitipkan barang berharga (uang,
+                    laptop, ziplock/dokumen penting, dll.). Panitia tidak
+                    bertanggung jawab atas kerusakan/kehilangan barang berharga.
+                  </li> */}
+                  <li>Informasi Menyusul</li>
+                </ul>
+              </p>
+            </div>
           </div>
         </section>
 
