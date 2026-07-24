@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Container from "@/components/Container";
 import Button from "@/components/Button";
+import CopyButton from "@/components/copyButton";
 import { supabaseAdmin } from "@/libs/supabase/server";
 import { getRegistrationFee } from "@/libs/config/pricing";
 import { BANK_TRANSFER_INFO } from "@/libs/config/bankTransfer";
@@ -93,12 +94,7 @@ export default async function TransferCheckoutPage({
             {registration.status !== "confirmed" &&
               registration.status !== "waiting_verification" && (
                 <>
-                  <p className="text-center text-sm text-black/70">
-                    Transfer ke rekening di bawah ini pakai m-banking atau
-                    teller bank kamu.
-                  </p>
-
-                  <div className="mx-auto mt-4 w-full max-w-xs border-4 border-black bg-white p-5 text-center">
+                  <div className="mx-auto mt-4 w-full max-w-xs border-4 border-gray-700 rounded-lg bg-white p-5 text-center">
                     <p className="text-xs uppercase tracking-widest text-black/50">
                       Transfer ke rekening
                     </p>
@@ -110,14 +106,15 @@ export default async function TransferCheckoutPage({
                     >
                       {BANK_TRANSFER_INFO.bankName}
                     </p>
-                    <p
-                      className={cn(
-                        spaceMono.className,
-                        "mt-3 text-2xl tracking-widest text-black break-all",
-                      )}
-                    >
-                      {BANK_TRANSFER_INFO.accountNumber}
-                    </p>
+                    <div className="mt-3">
+                      <div className="flex items-center justify-center gap-2">
+                        <CopyButton
+                          value={BANK_TRANSFER_INFO.accountNumber}
+                          label="Salin nomor rekening"
+                        />
+                      </div>
+                    </div>
+
                     <p className="mt-2 text-sm text-black/70">
                       a.n. {BANK_TRANSFER_INFO.accountHolder}
                     </p>
@@ -125,7 +122,10 @@ export default async function TransferCheckoutPage({
 
                   <div className="mt-6 border-4 border-black bg-[#FFD400] p-4 text-center">
                     <p className="text-xs uppercase tracking-widest text-black/70">
-                      Transfer TEPAT sejumlah (wajib pakai kode unik)
+                      Transfer TEPAT sejumlah{" "}
+                      <span className="text-red-800">
+                        (wajib pakai kode unik)
+                      </span>
                     </p>
                     <p
                       className={cn(
