@@ -4,7 +4,8 @@ import { supabaseAdmin } from "@/libs/supabase/server";
 import { getAdminUser } from "@/libs/supabase/serverAuth";
 import { resend, EMAIL_FROM } from "@/libs/email/resend";
 import { buildSuccessEmailHtml } from "@/libs/email/successTemplate";
-import { buildInvoiceEmailHtml } from "@/libs/email/invoiceTemplate";
+import { buildReminderEmailHtml } from "@/libs/email/reminderTemplate";
+import { buildTransferReminderEmailHtml } from "@/libs/email/transferInvoiceTemplate";
 import { generateQrCodeBuffer } from "@/libs/email/qrcode";
 import { getRegistrationFee } from "@/libs/config/pricing";
 import { logAuditEvent } from "@/libs/actions/logs";
@@ -153,24 +154,71 @@ export async function resendRegistrationEmail(
         ],
       });
     } else if (registration.status === "pending_payment") {
-      if (!registration.midtrans_redirect_url || !registration.payment_expires_at || !registration.midtrans_order_id) {
-        return { ok: false, error: "Data pembayaran belum lengkap, tidak bisa kirim ulang invoice." };
-      }
+      // Dua jalur pembayaran nyampur di status ini: Midtrans (punya
+      // midtrans_order_id + tenggat waktu) dan transfer bank manual
+      // (punya nomor_urut, TANPA tenggat waktu). Nadanya beda dikit,
+      // dan buat transfer sengaja gak ada info deadline.
+      const isTransferFlow = !registration.midtrans_order_id;
 
-      await resend.emails.send({
-        from: EMAIL_FROM,
-        to: registration.email,
-        subject: `Invoice pendaftaran ACS 2026 — ${registration.midtrans_order_id}`,
-        html: buildInvoiceEmailHtml({
-          namaLengkap: registration.nama_lengkap,
-          orderId: registration.midtrans_order_id,
-          kategori: registration.kategori,
-          ukuranJersey: registration.ukuran_jersey,
-          grossAmount: getRegistrationFee(registration.kategori),
-          paymentExpiresAt: registration.payment_expires_at,
-          paymentUrl: registration.midtrans_redirect_url,
-        }),
-      });
+      if (isTransferFlow) {
+        if (!registration.nomor_urut) {
+          return { ok: false, error: "Data transfer belum lengkap, tidak bisa kirim reminder." };
+        }
+
+        const checkoutUrl = `${process.env.NEXT_PUBLIC_APP_URL}/checkout/transfer/${registration.id}`;
+        const grossAmount = getRegistrationFee(registration.kategori) + registration.nomor_urut;
+
+        await resend.emails.send({
+          from: EMAIL_FROM,
+          to: registration.email,
+          subject: `Pengingat: bukti transfer ACS 2026 kamu belum kami terima`,
+          html: buildTransferReminderEmailHtml({
+            namaLengkap: registration.nama_lengkap,
+            kategori: registration.kategori,
+            ukuranJersey: registration.ukuran_jersey,
+            grossAmount,
+            checkoutUrl,
+          }),
+        });
+      } else {
+        if (!registration.midtrans_redirect_url || !registration.payment_expires_at) {
+          return { ok: false, error: "Data pembayaran belum lengkap, tidak bisa kirim reminder." };
+        }
+
+        // Jaga-jaga kalau belum ke-flip ke "expired" (checkAndExpireIfPastDeadline
+        // cuma jalan pas peserta buka halaman checkout-nya sendiri) — daripada
+        // ngirim reminder ke link yang udah kedaluwarsa, update dulu statusnya.
+        const isPastDeadline =
+          new Date(registration.payment_expires_at).getTime() < Date.now();
+
+        if (isPastDeadline) {
+          await supabaseAdmin
+            .from("registrations")
+            .update({ status: "expired" })
+            .eq("id", registrationId);
+
+          return {
+            ok: false,
+            error:
+              "Pendaftaran ini sudah lewat tenggat bayar (kedaluwarsa). Minta peserta daftar ulang, bukan bayar invoice lama.",
+          };
+        }
+
+        await resend.emails.send({
+          from: EMAIL_FROM,
+          to: registration.email,
+          subject: `Pengingat: pembayaran pendaftaran ACS 2026 kamu belum kami terima`,
+          html: buildReminderEmailHtml({
+            namaLengkap: registration.nama_lengkap,
+            orderId: registration.midtrans_order_id,
+            kategori: registration.kategori,
+            ukuranJersey: registration.ukuran_jersey,
+            grossAmount: getRegistrationFee(registration.kategori),
+            paymentExpiresAt: registration.payment_expires_at,
+            paymentUrl: registration.midtrans_redirect_url,
+          }),
+        });
+      }
     } else {
       return { ok: false, error: `Status "${registration.status}" tidak punya email untuk dikirim ulang.` };
     }

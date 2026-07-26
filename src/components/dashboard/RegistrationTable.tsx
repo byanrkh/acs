@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import * as XLSX from "xlsx";
 import { resendRegistrationEmail } from "@/libs/actions/admin";
+import { createSupabaseBrowserClient } from "@/libs/supabase/client";
 import { spaceMono, SpecialGhotic } from "@/libs/Font";
 import { cn } from "@/libs/cn";
 
@@ -41,14 +42,61 @@ export default function RegistrationsTable({
 }: {
   registrations: Registration[];
 }) {
+  const [rows, setRows] = useState(registrations);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("semua");
   const [isPending, startTransition] = useTransition();
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<Record<string, string>>({});
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [isLive, setIsLive] = useState(false);
+
+  // Live update: dengerin perubahan tabel registrations dari Supabase
+  // Realtime. Pendaftar baru langsung muncul, dan perubahan status
+  // (misalnya abis di-approve dari halaman verifikasi transfer, atau
+  // pembayaran Midtrans masuk) langsung ke-refresh tanpa reload halaman.
+  useEffect(() => {
+    const supabase = createSupabaseBrowserClient();
+
+    const channel = supabase
+      .channel("data-peserta-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "registrations" },
+        (payload) => {
+          if (payload.eventType === "DELETE") {
+            const oldRow = payload.old as { id?: string };
+            if (oldRow.id) {
+              setRows((prev) => prev.filter((r) => r.id !== oldRow.id));
+            }
+            return;
+          }
+
+          const newRow = payload.new as Registration;
+          if (!newRow?.id) return;
+
+          setRows((prev) => {
+            const exists = prev.some((r) => r.id === newRow.id);
+            if (exists) {
+              return prev.map((r) => (r.id === newRow.id ? newRow : r));
+            }
+            // Pendaftar baru -> taruh paling atas, samain sama urutan
+            // awal (created_at descending) dari server.
+            return [newRow, ...prev];
+          });
+        },
+      )
+      .subscribe((status) => {
+        setIsLive(status === "SUBSCRIBED");
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const filtered = useMemo(() => {
-    return registrations.filter((r) => {
+    return rows.filter((r) => {
       const matchStatus = statusFilter === "semua" || r.status === statusFilter;
       const q = query.trim().toLowerCase();
       const matchQuery =
@@ -59,10 +107,21 @@ export default function RegistrationsTable({
         r.nama_bib.toLowerCase().includes(q);
       return matchStatus && matchQuery;
     });
-  }, [registrations, query, statusFilter]);
+  }, [rows, query, statusFilter]);
 
   function handleExport() {
+    const formatDateTime = (iso: string | null) =>
+      iso
+        ? new Intl.DateTimeFormat("id-ID", {
+            dateStyle: "medium",
+            timeStyle: "short",
+            timeZone: "Asia/Jakarta",
+          }).format(new Date(iso))
+        : "-";
+
+    // Semua kolom dijabarin lengkap, bukan cuma ringkasan yang tampil di UI.
     const rows = filtered.map((r) => ({
+      "ID Registrasi": r.id,
       "Nomor BIB": r.bib_number ?? "-",
       "Nama Lengkap": r.nama_lengkap,
       "Nama di BIB": r.nama_bib,
@@ -70,20 +129,34 @@ export default function RegistrationsTable({
       Telepon: r.telepon,
       Kategori: r.kategori,
       "Ukuran Jersey": r.ukuran_jersey,
-      "Jenis Kelamin": r.jenis_kelamin,
+      "Jenis Kelamin": r.jenis_kelamin === "L" ? "Laki-laki" : "Perempuan",
       "Golongan Darah": r.golongan_darah,
       Status: STATUS_LABEL[r.status] ?? r.status,
       "Race Pack Diambil": r.race_pack_taken_at ? "Sudah" : "Belum",
-      "Tanggal Daftar": r.created_at
-        ? new Intl.DateTimeFormat("id-ID", {
-            dateStyle: "medium",
-            timeStyle: "short",
-            timeZone: "Asia/Jakarta",
-          }).format(new Date(r.created_at))
-        : "-",
+      "Waktu Pengambilan Race Pack": formatDateTime(r.race_pack_taken_at),
+      "Tanggal Daftar": formatDateTime(r.created_at),
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(rows);
+
+    // Lebar kolom biar enak dibaca, ga mepet-mepet.
+    worksheet["!cols"] = [
+      { wch: 38 }, // ID Registrasi
+      { wch: 10 }, // Nomor BIB
+      { wch: 24 }, // Nama Lengkap
+      { wch: 20 }, // Nama di BIB
+      { wch: 28 }, // Email
+      { wch: 16 }, // Telepon
+      { wch: 10 }, // Kategori
+      { wch: 12 }, // Ukuran Jersey
+      { wch: 12 }, // Jenis Kelamin
+      { wch: 14 }, // Golongan Darah
+      { wch: 16 }, // Status
+      { wch: 16 }, // Race Pack Diambil
+      { wch: 24 }, // Waktu Pengambilan Race Pack
+      { wch: 20 }, // Tanggal Daftar
+    ];
+
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Peserta");
     XLSX.writeFile(workbook, `peserta-acs-2026-${Date.now()}.xlsx`);
@@ -111,6 +184,11 @@ export default function RegistrationsTable({
   const canResend = (status: string) =>
     status === "confirmed" || status === "pending_payment";
 
+  // Label tombol beda tergantung status: peserta yang belum bayar dapet
+  // "reminder", yang udah confirmed dapet "kirim ulang tiket" (isinya QR).
+  const resendLabel = (status: string) =>
+    status === "confirmed" ? "Resend E-Tiket" : "Remind";
+
   return (
     <div>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -122,13 +200,29 @@ export default function RegistrationsTable({
         >
           Data Peserta ({filtered.length})
         </h1>
-        <button
-          type="button"
-          onClick={handleExport}
-          className="border-4 border-black bg-[#FFD400] px-4 py-2 text-xs font-bold uppercase tracking-widest shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
-        >
-          Export ke Excel
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <span
+            className={cn(
+              spaceMono.className,
+              "flex shrink-0 items-center gap-2 px-3 py-2 text-[10px] font-bold uppercase tracking-widest",
+            )}
+          >
+            <span
+              className={cn(
+                "h-2 w-2 rounded-full",
+                isLive ? "bg-emerald-500 animate-pulse" : "bg-black/40",
+              )}
+            />
+            {isLive ? null : "Connecting..."}
+          </span>
+          <button
+            type="button"
+            onClick={handleExport}
+            className="border-4 border-black bg-[#FFD400] px-4 py-2 text-xs font-bold uppercase tracking-widest shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
+          >
+            Export ke Excel
+          </button>
+        </div>
       </div>
 
       <div className="mt-6 flex flex-col gap-3 sm:flex-row">
@@ -212,7 +306,9 @@ export default function RegistrationsTable({
                         disabled={isPending && resendingId === r.id}
                         className="border-2 border-black bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-widest hover:bg-black hover:text-white disabled:opacity-50"
                       >
-                        {resendingId === r.id ? "Mengirim..." : "Kirim ulang"}
+                        {resendingId === r.id
+                          ? "Mengirim..."
+                          : resendLabel(r.status)}
                       </button>
                       {feedback[r.id] && (
                         <p className="mt-1 text-[10px] font-bold text-[#1F4B33]">
@@ -240,82 +336,115 @@ export default function RegistrationsTable({
         </table>
       </div>
 
-      {/* Card — mobile */}
-      <div className="mt-6 space-y-3 sm:hidden">
-        {filtered.map((r) => (
-          <div key={r.id} className="border-4 border-black bg-white p-4">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <p
-                  className={cn(
-                    spaceMono.className,
-                    "text-[9px] uppercase tracking-widest text-black/40",
-                  )}
+      {/* Card — mobile: ringkas, diketuk buat buka detail lengkap, list-nya di-scroll */}
+      <div className="mt-6 flex max-h-[520px] flex-col overflow-hidden border-4 border-black bg-white sm:hidden">
+        <div className="divide-y-2 divide-black/10 overflow-y-auto">
+          {filtered.map((r) => {
+            const isOpen = expandedId === r.id;
+
+            return (
+              <div key={r.id}>
+                <button
+                  type="button"
+                  onClick={() => setExpandedId(isOpen ? null : r.id)}
+                  className="w-full px-4 py-3 text-left"
                 >
-                  BIB
-                </p>
-                <p className={cn(SpecialGhotic.className, "text-xl")}>
-                  {r.bib_number ?? "-"}
-                </p>
-              </div>
-              <span
-                className={cn(
-                  "border-2 border-black px-2 py-0.5 text-[10px] font-bold uppercase",
-                  STATUS_COLOR[r.status],
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="shrink-0 text-black/40">
+                        {isOpen ? "▾" : "▸"}
+                      </span>
+                      <span
+                        className={cn(
+                          spaceMono.className,
+                          "shrink-0 text-sm font-bold",
+                        )}
+                      >
+                        {r.bib_number ?? "-"}
+                      </span>
+                      <span className="truncate text-sm font-bold">
+                        {r.nama_lengkap}
+                      </span>
+                    </div>
+                    <span
+                      className={cn(
+                        "shrink-0 border-2 border-black px-2 py-0.5 text-[9px] font-bold uppercase",
+                        STATUS_COLOR[r.status],
+                      )}
+                    >
+                      {STATUS_LABEL[r.status] ?? r.status}
+                    </span>
+                  </div>
+                  <p className="mt-1 truncate pl-5 text-[11px] text-black/50">
+                    {r.email}
+                  </p>
+                </button>
+
+                {isOpen && (
+                  <div className="space-y-2 border-t-2 border-black/10 bg-[#FFF7DA] px-4 py-3">
+                    <div className="grid grid-cols-2 gap-y-1.5 text-xs">
+                      <div className="col-span-2">
+                        <span className="text-black/40">Nama di BIB: </span>
+                        <span className="font-bold">{r.nama_bib}</span>
+                      </div>
+                      <div>
+                        <span className="text-black/40">Telp: </span>
+                        <span className="font-bold">{r.telepon}</span>
+                      </div>
+                      <div className="capitalize">
+                        <span className="text-black/40">Kategori: </span>
+                        <span className="font-bold">{r.kategori}</span>
+                      </div>
+                      <div>
+                        <span className="text-black/40">Jersey: </span>
+                        <span className="font-bold">{r.ukuran_jersey}</span>
+                      </div>
+                      <div>
+                        <span className="text-black/40">Jenis Kelamin: </span>
+                        <span className="font-bold">
+                          {r.jenis_kelamin === "L" ? "Laki-laki" : "Perempuan"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-black/40">Gol. Darah: </span>
+                        <span className="font-bold">{r.golongan_darah}</span>
+                      </div>
+                      <div>
+                        <span className="text-black/40">Race Pack: </span>
+                        <span className="font-bold">
+                          {r.race_pack_taken_at ? "✅ Sudah" : "—"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {canResend(r.status) && (
+                      <button
+                        type="button"
+                        onClick={() => handleResend(r.id)}
+                        disabled={isPending && resendingId === r.id}
+                        className="w-full border-2 border-black bg-white px-3 py-2 text-[11px] font-bold uppercase tracking-widest hover:bg-black hover:text-white disabled:opacity-50"
+                      >
+                        {resendingId === r.id
+                          ? "Mengirim..."
+                          : resendLabel(r.status)}
+                      </button>
+                    )}
+                    {feedback[r.id] && (
+                      <p className="text-[11px] font-bold text-[#1F4B33]">
+                        {feedback[r.id]}
+                      </p>
+                    )}
+                  </div>
                 )}
-              >
-                {STATUS_LABEL[r.status] ?? r.status}
-              </span>
-            </div>
-
-            <p className="mt-2 font-bold">{r.nama_lengkap}</p>
-            <p className="text-xs text-black/60">{r.email}</p>
-
-            <div className="mt-3 grid grid-cols-2 gap-y-1.5 text-xs">
-              <div className="col-span-2">
-                <span className="text-black/40">Nama di BIB: </span>
-                {r.nama_bib}
               </div>
-              <div>
-                <span className="text-black/40">Telp: </span>
-                {r.telepon}
-              </div>
-              <div className="capitalize">
-                <span className="text-black/40">Kategori: </span>
-                {r.kategori}
-              </div>
-              <div>
-                <span className="text-black/40">Jersey: </span>
-                {r.ukuran_jersey}
-              </div>
-              <div>
-                <span className="text-black/40">Race Pack: </span>
-                {r.race_pack_taken_at ? "✅" : "—"}
-              </div>
-            </div>
-
-            {canResend(r.status) && (
-              <button
-                type="button"
-                onClick={() => handleResend(r.id)}
-                disabled={isPending && resendingId === r.id}
-                className="mt-3 w-full border-2 border-black bg-white px-3 py-2 text-[11px] font-bold uppercase tracking-widest hover:bg-black hover:text-white disabled:opacity-50"
-              >
-                {resendingId === r.id ? "Mengirim..." : "Kirim ulang email"}
-              </button>
-            )}
-            {feedback[r.id] && (
-              <p className="mt-2 text-[11px] font-bold text-[#1F4B33]">
-                {feedback[r.id]}
-              </p>
-            )}
-          </div>
-        ))}
-        {filtered.length === 0 && (
-          <p className="border-4 border-black bg-white p-6 text-center text-sm text-black/40">
-            Tidak ada data yang cocok.
-          </p>
-        )}
+            );
+          })}
+          {filtered.length === 0 && (
+            <p className="p-6 text-center text-sm text-black/40">
+              Tidak ada data yang cocok.
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );
