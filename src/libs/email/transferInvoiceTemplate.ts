@@ -108,14 +108,19 @@ export function buildTransferReminderEmailHtml(data: TransferInvoiceData) {
         </tr>
         <tr>
           <td style="border:4px solid #000;background:#fff;padding:24px;">
-            <p style="margin:0 0 12px;font-size:14px;color:#000;">
+            <p style="margin:0 0 16px;font-size:14px;color:#000;">
               Halo <strong>${data.namaLengkap}</strong>,
             </p>
             <p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:#000;">
-              Kami belum menerima bukti transfer untuk pendaftaran ACS 2026
-              kategori <strong>${kategoriLabel}</strong> kamu. Berikut rekening
-              tujuannya lagi, transfer <strong>PERSIS</strong> sejumlah nominal
-              di bawah (sudah termasuk kode unik) lalu unggah buktinya:
+              Terima kasih telah mendaftar ACS 2026 pada kategori
+              <strong>${kategoriLabel}</strong>. Yuk, selesaikan pembayaran
+              pendaftaran Anda agar proses registrasi dapat segera kami
+              verifikasi.
+            </p>
+            <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:#000;">
+              Silakan melakukan transfer ke rekening berikut dengan nominal
+              yang sama persis seperti yang tertera, kemudian unggah bukti
+              transfer melalui tautan yang telah disediakan.
             </p>
             <div style="border:3px solid #000;background:#fff;padding:16px;text-align:center;margin-bottom:16px;">
               <p style="margin:0;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#666;">
@@ -131,7 +136,7 @@ export function buildTransferReminderEmailHtml(data: TransferInvoiceData) {
                 a.n. ${BANK_TRANSFER_INFO.accountHolder}
               </p>
             </div>
-            <div style="border:3px solid #000;background:#FFD400;padding:16px;text-align:center;margin-bottom:16px;">
+            <div style="border:3px solid #000;background:#FFD400;padding:16px;text-align:center;margin-bottom:20px;">
               <p style="margin:0;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#000;">
                 Total transfer
               </p>
@@ -139,7 +144,7 @@ export function buildTransferReminderEmailHtml(data: TransferInvoiceData) {
                 ${formatRupiah(data.grossAmount)}
               </p>
             </div>
-            <p style="text-align:center;margin:0 0 8px;">
+            <p style="text-align:center;margin:0 0 16px;">
               <a
                 href="${data.checkoutUrl}"
                 style="display:inline-block;border:3px solid #000;background:#1F4B33;color:#fff;padding:10px 20px;font-size:13px;font-weight:700;text-decoration:none;text-transform:uppercase;"
@@ -147,9 +152,21 @@ export function buildTransferReminderEmailHtml(data: TransferInvoiceData) {
                 Lihat Detail & Unggah Bukti
               </a>
             </p>
-            <p style="margin:16px 0 0;font-size:11px;color:#666;text-align:center;">
-              Nominal harus sama persis termasuk kode unik, jangan dibulatkan.
-              Kalau kamu sudah transfer & sudah unggah bukti, abaikan email ini.
+            <p style="margin:0 0 16px;font-size:11px;color:#666;text-align:center;">
+              Mohon pastikan nominal transfer sesuai hingga digit terakhir
+              agar pembayaran dapat diverifikasi secara otomatis.
+            </p>
+            <p style="margin:0 0 16px;font-size:13px;line-height:1.6;color:#000;">
+              Apabila Anda telah menyelesaikan pembayaran namun masih
+              menerima email ini, silakan abaikan pesan ini atau hubungi
+              panitia ACS 2026 untuk proses pengecekan.
+            </p>
+            <p style="margin:0 0 4px;font-size:13px;line-height:1.6;color:#000;">
+              Terima kasih, kami tunggu kehadiran Anda di ACS 2026!
+            </p>
+            <p style="margin:0;font-size:13px;line-height:1.6;color:#000;">
+              Salam hangat,<br />
+              Panitia ACS 2026
             </p>
           </td>
         </tr>
