@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import * as XLSX from "xlsx";
 import { resendRegistrationEmail } from "@/libs/actions/admin";
-import { createSupabaseBrowserClient } from "@/libs/supabase/client";
 import { spaceMono, SpecialGhotic } from "@/libs/Font";
 import { cn } from "@/libs/cn";
 
-type Registration = {
+export type Registration = {
   id: string;
   nama_lengkap: string;
   email: string;
@@ -39,64 +38,20 @@ const STATUS_COLOR: Record<string, string> = {
 
 export default function RegistrationsTable({
   registrations,
+  isLive,
 }: {
   registrations: Registration[];
+  isLive: boolean;
 }) {
-  const [rows, setRows] = useState(registrations);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("semua");
   const [isPending, startTransition] = useTransition();
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<Record<string, string>>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [isLive, setIsLive] = useState(false);
-
-  // Live update: dengerin perubahan tabel registrations dari Supabase
-  // Realtime. Pendaftar baru langsung muncul, dan perubahan status
-  // (misalnya abis di-approve dari halaman verifikasi transfer, atau
-  // pembayaran Midtrans masuk) langsung ke-refresh tanpa reload halaman.
-  useEffect(() => {
-    const supabase = createSupabaseBrowserClient();
-
-    const channel = supabase
-      .channel("data-peserta-realtime")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "registrations" },
-        (payload) => {
-          if (payload.eventType === "DELETE") {
-            const oldRow = payload.old as { id?: string };
-            if (oldRow.id) {
-              setRows((prev) => prev.filter((r) => r.id !== oldRow.id));
-            }
-            return;
-          }
-
-          const newRow = payload.new as Registration;
-          if (!newRow?.id) return;
-
-          setRows((prev) => {
-            const exists = prev.some((r) => r.id === newRow.id);
-            if (exists) {
-              return prev.map((r) => (r.id === newRow.id ? newRow : r));
-            }
-            // Pendaftar baru -> taruh paling atas, samain sama urutan
-            // awal (created_at descending) dari server.
-            return [newRow, ...prev];
-          });
-        },
-      )
-      .subscribe((status) => {
-        setIsLive(status === "SUBSCRIBED");
-      });
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
 
   const filtered = useMemo(() => {
-    return rows.filter((r) => {
+    return registrations.filter((r) => {
       const matchStatus = statusFilter === "semua" || r.status === statusFilter;
       const q = query.trim().toLowerCase();
       const matchQuery =
@@ -107,7 +62,7 @@ export default function RegistrationsTable({
         r.nama_bib.toLowerCase().includes(q);
       return matchStatus && matchQuery;
     });
-  }, [rows, query, statusFilter]);
+  }, [registrations, query, statusFilter]);
 
   function handleExport() {
     const formatDateTime = (iso: string | null) =>
@@ -190,12 +145,12 @@ export default function RegistrationsTable({
     status === "confirmed" ? "Resend E-Tiket" : "Remind";
 
   return (
-    <div>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="border-4 border-black bg-white shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
+      <div className="flex flex-col gap-4 border-b-4 border-black bg-[#FDF6E9] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <h1
           className={cn(
             SpecialGhotic.className,
-            "text-xl uppercase tracking-tight sm:text-2xl",
+            "text-lg uppercase tracking-tight sm:text-xl",
           )}
         >
           Data Peserta ({filtered.length})
@@ -204,16 +159,16 @@ export default function RegistrationsTable({
           <span
             className={cn(
               spaceMono.className,
-              "flex shrink-0 items-center gap-2 px-3 py-2 text-[10px] font-bold uppercase tracking-widest",
+              "flex shrink-0 items-center gap-2 border-2 border-black bg-white px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-widest",
             )}
           >
             <span
               className={cn(
                 "h-2 w-2 rounded-full",
-                isLive ? "bg-emerald-500 animate-pulse" : "bg-black/40",
+                isLive ? "animate-pulse bg-emerald-500" : "bg-black/40",
               )}
             />
-            {isLive ? null : "Connecting..."}
+            {isLive ? "Live" : "Connecting..."}
           </span>
           <button
             type="button"
@@ -225,7 +180,7 @@ export default function RegistrationsTable({
         </div>
       </div>
 
-      <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+      <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:px-6">
         <input
           type="text"
           placeholder="Cari nama, email, atau nomor BIB..."
@@ -250,7 +205,7 @@ export default function RegistrationsTable({
       </div>
 
       {/* Tabel — desktop */}
-      <div className="mt-6 hidden overflow-x-auto border-4 border-black bg-white sm:block">
+      <div className="hidden overflow-x-auto border-t-4 border-black sm:block">
         <table className="w-full min-w-[1150px] text-left text-sm">
           <thead>
             <tr
@@ -324,10 +279,7 @@ export default function RegistrationsTable({
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td
-                  colSpan={10}
-                  className="px-3 py-8 text-center text-black/40"
-                >
+                <td colSpan={10} className="px-3 py-8 text-center text-black/40">
                   Tidak ada data yang cocok.
                 </td>
               </tr>
@@ -337,7 +289,7 @@ export default function RegistrationsTable({
       </div>
 
       {/* Card — mobile: ringkas, diketuk buat buka detail lengkap, list-nya di-scroll */}
-      <div className="mt-6 flex max-h-[520px] flex-col overflow-hidden border-4 border-black bg-white sm:hidden">
+      <div className="flex max-h-[520px] flex-col overflow-hidden border-t-4 border-black sm:hidden">
         <div className="divide-y-2 divide-black/10 overflow-y-auto">
           {filtered.map((r) => {
             const isOpen = expandedId === r.id;
@@ -355,10 +307,7 @@ export default function RegistrationsTable({
                         {isOpen ? "▾" : "▸"}
                       </span>
                       <span
-                        className={cn(
-                          spaceMono.className,
-                          "shrink-0 text-sm font-bold",
-                        )}
+                        className={cn(spaceMono.className, "shrink-0 text-sm font-bold")}
                       >
                         {r.bib_number ?? "-"}
                       </span>
@@ -424,9 +373,7 @@ export default function RegistrationsTable({
                         disabled={isPending && resendingId === r.id}
                         className="w-full border-2 border-black bg-white px-3 py-2 text-[11px] font-bold uppercase tracking-widest hover:bg-black hover:text-white disabled:opacity-50"
                       >
-                        {resendingId === r.id
-                          ? "Mengirim..."
-                          : resendLabel(r.status)}
+                        {resendingId === r.id ? "Mengirim..." : resendLabel(r.status)}
                       </button>
                     )}
                     {feedback[r.id] && (

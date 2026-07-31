@@ -150,24 +150,24 @@ export default function VerifikasiTransferTable({
         <h1
           className={cn(
             SpecialGhotic.className,
-            "text-xl uppercase tracking-tight sm:text-2xl",
+            "text-lg uppercase tracking-tight sm:text-xl",
           )}
         >
-          Verifikasi Transfer ({rows.length})
+          Antrian Verifikasi ({rows.length})
         </h1>
         <span
           className={cn(
             spaceMono.className,
-            "flex shrink-0 items-center gap-2 px-3 py-2 text-[10px] font-bold uppercase tracking-widest",
+            "flex shrink-0 items-center gap-2 border-2 border-black bg-white px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-widest",
           )}
         >
           <span
             className={cn(
               "h-2 w-2 rounded-full",
-              isLive ? "bg-emerald-500 animate-pulse" : "bg-black/40",
+              isLive ? "animate-pulse bg-emerald-500" : "bg-black/40",
             )}
           />
-          {isLive ? null : "Connecting..."}
+          {isLive ? "Live" : "Connecting..."}
         </span>
       </div>
 
