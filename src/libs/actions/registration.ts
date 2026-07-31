@@ -2,6 +2,7 @@
 
 import { supabaseAdmin } from "@/libs/supabase/server";
 import { submitTransferRegistration } from "@/libs/actions/registrationTransfer";
+import { getRegistrationFee } from "@/libs/config/pricing";
 
 export type RegistrationPayload = {
   kategori: "pelajar" | "umum";
@@ -110,6 +111,11 @@ export async function submitRegistration(
     return submitTransferRegistration(data, email);
   }
 
+  // PROMO: baseline final_amount = tarif dasar (belum ada diskon).
+  // Promo baru diterapkan nanti di halaman /checkout/[id] lewat
+  // applyPromoToRegistration, yang akan meng-update kolom ini.
+  const baseAmount = getRegistrationFee(data.kategori);
+
   // 3) Simpan ke database dan ambil 'id' (UUID) baris baru
   const { data: inserted, error: insertError } = await supabaseAdmin
     .from("registrations")
@@ -130,6 +136,9 @@ export async function submitRegistration(
       ukuran_jersey: data.ukuranJersey,
       nama_bib: data.namaBib.trim(),
       status: "pending_payment",
+      promo_id: null,
+      discount_amount: 0,
+      final_amount: baseAmount,
     })
     .select("id")
     .single();

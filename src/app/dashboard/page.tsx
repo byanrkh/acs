@@ -3,6 +3,7 @@ import { getRegistrationFee } from "@/libs/config/pricing";
 import StatsCards from "@/components/dashboard/StatsCard";
 import RegistrationsTable from "@/components/dashboard/RegistrationTable";
 import LogsPanel from "@/components/dashboard/LogsPanel";
+import PromoManagementCard from "@/components/dashboard/PromoManagementCard";
 import { getAuditLogs, getPaymentLogs } from "@/libs/actions/logs";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +14,7 @@ export default async function DashboardPage() {
       supabaseAdmin
         .from("registrations")
         .select(
-          "id, nama_lengkap, email, telepon, kategori, ukuran_jersey, nama_bib, jenis_kelamin, golongan_darah, status, bib_number, race_pack_taken_at, created_at",
+          "id, nama_lengkap, email, telepon, kategori, ukuran_jersey, nama_bib, jenis_kelamin, golongan_darah, status, bib_number, race_pack_taken_at, created_at, final_amount",
         )
         .order("created_at", { ascending: false }),
       getAuditLogs(),
@@ -37,9 +38,17 @@ export default async function DashboardPage() {
     totalRacePackTaken: data.filter((r) => r.race_pack_taken_at).length,
     totalPelajar: data.filter((r) => r.kategori === "pelajar").length,
     totalUmum: data.filter((r) => r.kategori === "umum").length,
+    // PROMO: pakai final_amount (nominal yang BENAR-BENAR dibayar, sudah
+    // memperhitungkan diskon promo kalau ada) alih-alih getRegistrationFee
+    // mentah, supaya "Total Pendapatan" tetap akurat begitu promo dipakai.
+    // Fallback ke getRegistrationFee cuma buat jaga-jaga row lama yang
+    // entah kenapa belum ke-backfill saat migrasi.
     totalPendapatan: data
       .filter((r) => r.status === "confirmed")
-      .reduce((sum, r) => sum + getRegistrationFee(r.kategori), 0),
+      .reduce(
+        (sum, r) => sum + (r.final_amount ?? getRegistrationFee(r.kategori)),
+        0,
+      ),
   };
 
   return (
@@ -47,6 +56,7 @@ export default async function DashboardPage() {
       <StatsCards stats={stats} />
       <RegistrationsTable registrations={data} />
       <LogsPanel auditLogs={auditLogs} paymentLogs={paymentLogs} />
+      <PromoManagementCard />
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { resend, EMAIL_FROM } from "@/libs/email/resend";
 import { buildSuccessEmailHtml } from "@/libs/email/successTemplate";
 import { generateQrCodeBuffer } from "@/libs/email/qrcode";
 import { logAuditEvent, logPaymentEvent } from "@/libs/actions/logs";
+import { incrementPromoUsageSafely } from "@/libs/actions/promo";
 
 export type ApproveTransferResult =
   | { ok: true; bibNumber: string | null }
@@ -26,7 +27,7 @@ export async function approveTransferPayment(
   const { data: registration, error: fetchError } = await supabaseAdmin
     .from("registrations")
     .select(
-      "id, status, nama_lengkap, nama_bib, email, kategori, ukuran_jersey, success_email_sent_at",
+      "id, status, nama_lengkap, nama_bib, email, kategori, ukuran_jersey, success_email_sent_at, promo_id",
     )
     .eq("id", registrationId)
     .single();
@@ -35,6 +36,10 @@ export async function approveTransferPayment(
     return { ok: false, error: "Data peserta tidak ditemukan." };
   }
 
+  // Guard ini sekaligus jadi jaminan "sekali transisi" — begitu status
+  // berubah jadi "confirmed" di bawah, panggilan approve berikutnya untuk
+  // registrationId yang sama akan gagal di sini duluan. Jadi titik
+  // pemotongan kuota promo di bawah aman dari double-increment.
   if (registration.status !== "waiting_verification") {
     return {
       ok: false,
@@ -53,6 +58,11 @@ export async function approveTransferPayment(
     console.error("[approveTransferPayment] gagal update status:", updateError);
     return { ok: false, error: "Gagal mengubah status peserta." };
   }
+
+  // PROMO: potong kuota HANYA di sini, tepat setelah status berhasil
+  // dikonfirmasi. Best-effort — gagal increment TIDAK membatalkan approval
+  // (uang sudah diverifikasi masuk secara manual oleh admin).
+  await incrementPromoUsageSafely(registration.promo_id as string | null);
 
   // Email e-ticket (sama persis dengan yang dipakai jalur Midtrans) —
   // sekali per registrasi, dijaga lewat success_email_sent_at.

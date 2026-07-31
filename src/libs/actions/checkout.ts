@@ -38,7 +38,13 @@ export async function createSnapTransaction(
     return { ok: false, error: "Pendaftaran ini sudah dibatalkan." };
   }
 
-  const grossAmount = getRegistrationFee(registration.kategori);
+  // PROMO: gross_amount yang dikirim ke Midtrans WAJIB pakai final_amount
+  // yang tersimpan di DB (sudah memperhitungkan promo kalau ada), BUKAN
+  // dihitung ulang dari kategori. registrations.final_amount selalu ada
+  // (default = tarif dasar tanpa diskon, di-set sejak baris ini dibuat
+  // di submitRegistration) dan hanya berubah lewat
+  // applyPromoToRegistration / removePromoFromRegistration di server.
+  const grossAmount = registration.final_amount ?? getRegistrationFee(registration.kategori);
   const orderId = buildOrderId(registration.id);
 
   const paymentExpiresAt = new Date(

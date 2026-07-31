@@ -2,7 +2,13 @@
 
 import Script from "next/script";
 import { useEffect, useMemo, useState, useTransition } from "react";
+import { FaClock } from "react-icons/fa";
 import Button from "@/components/Button";
+import PromoInput from "@/components/checkout/PromoInput";
+import PaymentStepper, {
+  type PaymentStep,
+} from "@/components/checkout/PaymentStepper";
+import PriceTicket, { type PriceRow } from "@/components/checkout/PriceTicket";
 import {
   checkAndExpireIfPastDeadline,
   createSnapTransaction,
@@ -38,6 +44,9 @@ type Registration = {
   midtrans_order_id: string | null;
   payment_expires_at: string | null;
   bib_number: string | null;
+  discount_amount: number;
+  final_amount: number;
+  promo_code: string | null;
 };
 
 const SNAP_SRC =
@@ -51,6 +60,25 @@ function formatRupiah(amount: number) {
     currency: "IDR",
     maximumFractionDigits: 0,
   }).format(amount);
+}
+
+function buildSteps(status: string): PaymentStep[] {
+  return [
+    { label: "Daftar", state: "done" },
+    {
+      label: "Bayar",
+      state:
+        status === "pending_payment" || status === "expired"
+          ? "current"
+          : status === "confirmed"
+            ? "done"
+            : "upcoming",
+    },
+    {
+      label: "Terkonfirmasi",
+      state: status === "confirmed" ? "done" : "upcoming",
+    },
+  ];
 }
 
 function useCountdown(target: string | null) {
@@ -88,13 +116,22 @@ export default function CheckoutClient({
   const [isPending, startTransition] = useTransition();
   const [snapToken, setSnapToken] = useState<string | null>(null);
 
-  const grossAmount = useMemo(
+  const [promoCode, setPromoCode] = useState(registration.promo_code);
+  const [discountAmount, setDiscountAmount] = useState(
+    registration.discount_amount,
+  );
+  const [finalAmount, setFinalAmount] = useState(registration.final_amount);
+
+  const subtotal = useMemo(
     () => getRegistrationFee(registration.kategori),
     [registration.kategori],
   );
+
   const countdown = useCountdown(
     status === "pending_payment" ? registration.payment_expires_at : null,
   );
+
+  const canEditPromo = status === "pending_payment" || status === "expired";
 
   useEffect(() => {
     if (status !== "pending_payment") setSnapToken(null);
@@ -106,6 +143,7 @@ export default function CheckoutClient({
       const result = await checkAndExpireIfPastDeadline(registration.id);
       if (result) setStatus(result);
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function pollOnce() {
@@ -198,6 +236,19 @@ export default function CheckoutClient({
     });
   }
 
+  const priceRows: PriceRow[] = [
+    { label: "Subtotal", value: formatRupiah(subtotal) },
+    ...(discountAmount > 0
+      ? [
+          {
+            label: `Potongan${promoCode ? ` (${promoCode})` : ""}`,
+            value: `− ${formatRupiah(discountAmount)}`,
+            tone: "discount" as const,
+          },
+        ]
+      : []),
+  ];
+
   return (
     <div>
       <Script
@@ -220,65 +271,18 @@ export default function CheckoutClient({
           ? "Pembayaran berhasil"
           : "Selesaikan pembayaran"}
       </h1>
+      <p className="mt-2 text-sm text-black/60">
+        {registration.nama_lengkap} · Kategori {registration.kategori} · Jersey{" "}
+        {registration.ukuran_jersey}
+      </p>
 
-      <div className="mt-8 border-4 border-black bg-white p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] sm:p-8">
-        <table className="w-full border-4 border-black text-sm">
-          <tbody>
-            <tr>
-              <td className="border-2 border-black bg-[#FDF6E9] px-3 py-2 font-medium text-black/60">
-                Nama
-              </td>
-              <td className="border-2 border-black px-3 py-2 text-black">
-                {registration.nama_lengkap}
-              </td>
-            </tr>
-            <tr>
-              <td className="border-2 border-black bg-[#FDF6E9] px-3 py-2 font-medium text-black/60">
-                Kategori
-              </td>
-              <td className="border-2 border-black px-3 py-2 capitalize text-black">
-                {registration.kategori}
-              </td>
-            </tr>
-            <tr>
-              <td className="border-2 border-black bg-[#FDF6E9] px-3 py-2 font-medium text-black/60">
-                Ukuran jersey
-              </td>
-              <td className="border-2 border-black px-3 py-2 text-black">
-                {registration.ukuran_jersey}
-              </td>
-            </tr>
-            <tr>
-              <td className="border-2 border-black bg-[#FDF6E9] px-3 py-2 font-bold text-black">
-                Total bayar
-              </td>
-              <td
-                className={cn(
-                  SpecialGhotic.className,
-                  "border-2 border-black px-3 py-2 text-lg text-black",
-                )}
-              >
-                {formatRupiah(grossAmount)}
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <div className="mt-8 border-4 border-black bg-white p-5 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] sm:p-6">
+        <PaymentStepper steps={buildSteps(status)} />
+      </div>
 
-        {status === "pending_payment" && countdown && !countdown.expired && (
-          <p
-            className={cn(
-              spaceMono.className,
-              "mt-4 text-center text-xs uppercase tracking-widest text-black/60",
-            )}
-          >
-            Sisa waktu bayar: {String(countdown.hours).padStart(2, "0")}:
-            {String(countdown.minutes).padStart(2, "0")}:
-            {String(countdown.seconds).padStart(2, "0")}
-          </p>
-        )}
-
-        {status === "confirmed" && (
-          <div className="mt-6 border-4 border-black bg-[#1F4B33] p-5 text-center text-white">
+      <div className="mt-6 space-y-6">
+        {status === "confirmed" ? (
+          <div className="border-4 border-black bg-[#1F4B33] p-5 text-center text-white">
             <p
               className={cn(
                 SpecialGhotic.className,
@@ -301,27 +305,8 @@ export default function CheckoutClient({
               Detail juga sudah kami kirim ke email kamu.
             </p>
           </div>
-        )}
-
-        {(status === "expired" ||
-          (countdown?.expired && status === "pending_payment")) && (
-          <div className="mt-6 border-4 border-[#D91E36] bg-[#D91E36]/10 p-4 text-center">
-            <p
-              className={cn(
-                SpecialGhotic.className,
-                "uppercase tracking-tight text-[#D91E36]",
-              )}
-            >
-              Waktu pembayaran habis
-            </p>
-            <p className="mt-1 text-sm text-black/70">
-              Pendaftaran ini sudah kedaluwarsa. Kamu bisa coba bayar ulang.
-            </p>
-          </div>
-        )}
-
-        {status === "cancelled" && (
-          <div className="mt-6 border-4 border-black bg-black/5 p-4 text-center">
+        ) : status === "cancelled" ? (
+          <div className="border-4 border-black bg-black/5 p-4 text-center">
             <p
               className={cn(
                 SpecialGhotic.className,
@@ -331,57 +316,134 @@ export default function CheckoutClient({
               Pembayaran dibatalkan
             </p>
           </div>
-        )}
-
-        {waitingConfirmation && (
-          <div className="mt-4 text-center">
-            <p
-              className={cn(
-                spaceMono.className,
-                "text-xs uppercase tracking-widest text-black/60",
-              )}
-            >
-              Menunggu konfirmasi dari sistem pembayaran...
-            </p>
-            <button
-              type="button"
-              onClick={handleManualRecheck}
-              disabled={isPending}
-              className={cn(
-                spaceMono.className,
-                "mt-2 text-xs underline underline-offset-2 text-black/60 hover:text-black disabled:opacity-50",
-              )}
-            >
-              Cek status sekarang
-            </button>
-          </div>
-        )}
-
-        {errorMessage && (
-          <p
-            className={cn(
-              spaceMono.className,
-              "mt-4 text-center text-xs text-[#D91E36]",
+        ) : (
+          <>
+            {canEditPromo && (
+              <PromoInput
+                registrationId={registration.id}
+                channel="midtrans"
+                appliedPromo={
+                  promoCode ? { code: promoCode, discountAmount } : null
+                }
+                onApplied={(result) => {
+                  setPromoCode(result.code);
+                  setDiscountAmount(result.discountAmount);
+                  setFinalAmount(result.finalAmount);
+                  // Token Snap lama sudah menyimpan gross_amount sebelum
+                  // promo diterapkan -> paksa bikin transaksi baru saat
+                  // "Bayar" berikutnya diklik supaya nominal ikut update.
+                  setSnapToken(null);
+                }}
+                onRemoved={(result) => {
+                  setPromoCode(null);
+                  setDiscountAmount(0);
+                  setFinalAmount(result.finalAmount);
+                  setSnapToken(null);
+                }}
+              />
             )}
-          >
-            {errorMessage}
-          </p>
-        )}
 
-        {(status === "pending_payment" || status === "expired") && (
-          <Button
-            type="button"
-            variant="primary"
-            className="mt-6 w-full justify-center text-[#004D3D]"
-            onClick={handlePay}
-            disabled={isPending || !snapReady}
-          >
-            {isPending
-              ? "Menyiapkan pembayaran..."
-              : status === "expired"
-                ? "Bayar ulang"
-                : "Bayar sekarang"}
-          </Button>
+            <PriceTicket
+              rows={priceRows}
+              totalLabel="Total bayar"
+              totalValue={formatRupiah(finalAmount)}
+              stub={
+                registration.midtrans_order_id
+                  ? {
+                      label: "Order",
+                      value: registration.midtrans_order_id
+                        .slice(-6)
+                        .toUpperCase(),
+                    }
+                  : null
+              }
+              accentClassName="bg-[#7ED957]"
+            />
+
+            {status === "pending_payment" &&
+              countdown &&
+              !countdown.expired && (
+                <div className="flex items-center justify-center gap-2 border-4 border-black bg-white px-4 py-3 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                  <FaClock className="text-black/50" size={13} />
+                  <p
+                    className={cn(
+                      spaceMono.className,
+                      "text-xs uppercase tracking-widest text-black/60",
+                    )}
+                  >
+                    Sisa waktu bayar: {String(countdown.hours).padStart(2, "0")}
+                    :{String(countdown.minutes).padStart(2, "0")}:
+                    {String(countdown.seconds).padStart(2, "0")}
+                  </p>
+                </div>
+              )}
+
+            {(status === "expired" ||
+              (countdown?.expired && status === "pending_payment")) && (
+              <div className="border-4 border-[#D91E36] bg-[#D91E36]/10 p-4 text-center">
+                <p
+                  className={cn(
+                    SpecialGhotic.className,
+                    "uppercase tracking-tight text-[#D91E36]",
+                  )}
+                >
+                  Waktu pembayaran habis
+                </p>
+                <p className="mt-1 text-sm text-black/70">
+                  Pendaftaran ini sudah kedaluwarsa. Kamu bisa coba bayar ulang.
+                </p>
+              </div>
+            )}
+
+            {waitingConfirmation && (
+              <div className="text-center">
+                <p
+                  className={cn(
+                    spaceMono.className,
+                    "text-xs uppercase tracking-widest text-black/60",
+                  )}
+                >
+                  Menunggu konfirmasi dari sistem pembayaran...
+                </p>
+                <button
+                  type="button"
+                  onClick={handleManualRecheck}
+                  disabled={isPending}
+                  className={cn(
+                    spaceMono.className,
+                    "mt-2 text-xs underline underline-offset-2 text-black/60 hover:text-black disabled:opacity-50",
+                  )}
+                >
+                  Cek status sekarang
+                </button>
+              </div>
+            )}
+
+            {errorMessage && (
+              <p
+                className={cn(
+                  spaceMono.className,
+                  "text-center text-xs text-[#D91E36]",
+                )}
+              >
+                {errorMessage}
+              </p>
+            )}
+
+            <Button
+              type="button"
+              variant="primary"
+              className="w-full justify-center"
+              onClick={handlePay}
+              disabled={isPending || !snapReady}
+            >
+              {isPending
+                ? "Menyiapkan pembayaran..."
+                : status === "expired"
+                  ? "Bayar ulang"
+                  : "Bayar sekarang"}
+            </Button>
+          </>
         )}
       </div>
     </div>

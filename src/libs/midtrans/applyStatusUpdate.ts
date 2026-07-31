@@ -5,6 +5,7 @@ import { buildSuccessEmailHtml } from "@/libs/email/successTemplate";
 import { parseOrderId } from "@/libs/midtrans/orderId";
 import { generateQrCodeBuffer } from "@/libs/email/qrcode";
 import { logPaymentEvent } from "@/libs/actions/logs";
+import { incrementPromoUsageSafely } from "@/libs/actions/promo";
 
 export type RegistrationStatus = "pending_payment" | "confirmed" | "cancelled" | "expired";
 
@@ -88,7 +89,7 @@ export async function applyTransactionStatus({
   const { data: registration, error: fetchError } = await supabaseAdmin
     .from("registrations")
     .select(
-      "id, status, midtrans_order_id, nama_lengkap, nama_bib, email, kategori, ukuran_jersey, bib_number, success_email_sent_at",
+      "id, status, midtrans_order_id, nama_lengkap, nama_bib, email, kategori, ukuran_jersey, bib_number, success_email_sent_at, promo_id",
     )
     .eq("id", parsed.registrationId)
     .single();
@@ -145,6 +146,15 @@ export async function applyTransactionStatus({
     return { ok: true, status: "confirmed", bibNumber: registration.bib_number };
   }
 
+  // Titik transisi status yang SEBENARNYA (dari status lain -> newStatus).
+  // Ini terjadi PERSIS SEKALI per registrasi untuk newStatus === "confirmed"
+  // (webhook/reconcile berikutnya akan ke-skip lewat guard di atas begitu
+  // status di DB sudah "confirmed"), jadi aman jadi titik pemotongan kuota
+  // promo — tidak akan double-increment walau webhook & reconcile
+  // sama-sama memanggil applyTransactionStatus untuk order yang sama.
+  const isNewTransitionToConfirmed =
+    registration.status !== newStatus && newStatus === "confirmed";
+
   if (registration.status !== newStatus) {
     const { error: updateError } = await supabaseAdmin
       .from("registrations")
@@ -157,6 +167,14 @@ export async function applyTransactionStatus({
     }
 
     console.log(`[applyTransactionStatus] SUKSES update registrationId=${registration.id} → status=${newStatus}`);
+  }
+
+  // PROMO: potong kuota HANYA di titik transisi -> confirmed, dan cuma
+  // kalau registrasi ini memang pakai promo. Best-effort, tidak pernah
+  // menggagalkan konfirmasi pembayaran walau gagal (lihat komentar di
+  // incrementPromoUsageSafely).
+  if (isNewTransitionToConfirmed) {
+    await incrementPromoUsageSafely(registration.promo_id as string | null);
   }
 
   // Email Ke-2 (konfirmasi + nomor BIB) — sekali per registrasi.

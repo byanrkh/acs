@@ -38,7 +38,13 @@ export async function submitTransferRegistration(
   | { ok: false; error: string; field?: keyof RegistrationPayload }
 > {
   const nomorUrut = await getNextNomorUrut();
-  const grossAmount = getRegistrationFee(data.kategori) + nomorUrut;
+
+  // PROMO: baseline final_amount = tarif dasar (belum ada diskon). Promo
+  // baru diterapkan nanti di halaman /checkout/transfer/[id] lewat
+  // applyPromoToRegistration, yang akan meng-update kolom ini DAN
+  // mengirim ulang email invoice dengan nominal terbaru.
+  const baseAmount = getRegistrationFee(data.kategori);
+  const grossAmount = baseAmount + nomorUrut;
 
   const { data: inserted, error: insertError } = await supabaseAdmin
     .from("registrations")
@@ -60,6 +66,9 @@ export async function submitTransferRegistration(
       nama_bib: data.namaBib.trim(),
       status: "pending_payment",
       nomor_urut: nomorUrut,
+      promo_id: null,
+      discount_amount: 0,
+      final_amount: baseAmount,
     })
     .select("id")
     .single();
