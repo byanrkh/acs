@@ -516,33 +516,6 @@ function SidebarContent({
             </div>
           )}
         </div>
-
-        {!collapsed && (
-          <div className="relative border-2 border-black bg-black py-1.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-            <Marquee speed={28} gradient={false} pauseOnHover>
-              <span
-                className={cn(
-                  spaceMono.className,
-                  "mx-4 text-[10px] uppercase tracking-widest text-white",
-                )}
-              >
-                ARCHIPELAPACE · Rhythm of a Thousand Islands
-              </span>
-              <span
-                className={cn(
-                  spaceMono.className,
-                  "mx-4 text-[10px] uppercase tracking-widest text-[#FFD400]",
-                )}
-              >
-                {daysToRace === null
-                  ? "Memuat hitung mundur..."
-                  : daysToRace > 0
-                    ? `H-${daysToRace} menuju race day`
-                    : "Race day! 🏁"}
-              </span>
-            </Marquee>
-          </div>
-        )}
       </div>
 
       {onToggleCollapsed && (
@@ -556,16 +529,6 @@ function SidebarContent({
           collapsed && "px-3",
         )}
       >
-        {!collapsed && (
-          <p
-            className={cn(
-              spaceMono.className,
-              "px-1 pb-1 text-[9px] uppercase tracking-[0.2em] text-black/40",
-            )}
-          >
-            Menu Utama
-          </p>
-        )}
         {navItems.map(
           (
             { label, shortLabel, href, icon: Icon, activeBg, activeText, dot },
