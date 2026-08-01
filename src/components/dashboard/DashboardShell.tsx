@@ -46,8 +46,9 @@ export default function DashboardShell({
       <main
         className={cn(
           "px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10",
-          hydrated && "transition-[margin] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
-          collapsed ? "lg:ml-20" : "lg:ml-64",
+          hydrated &&
+            "transition-[margin] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
+          collapsed ? "lg:ml-20" : "lg:ml-72",
         )}
       >
         <div className="mx-auto max-w-6xl">{children}</div>

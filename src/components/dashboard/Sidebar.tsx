@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ComponentType } from "react";
+import Marquee from "react-fast-marquee";
 import LogoutButton from "./LogoutButton";
 import { SpecialGhotic, spaceMono } from "@/libs/Font";
 import { createSupabaseBrowserClient } from "@/libs/supabase/client";
@@ -104,7 +105,7 @@ function IconSettings({ className }: IconProps) {
   );
 }
 
-function IconChevron({ className }: IconProps) {
+function IconChevronDouble({ className }: IconProps) {
   return (
     <svg viewBox="0 0 20 20" fill="none" className={className} aria-hidden>
       <path
@@ -118,8 +119,48 @@ function IconChevron({ className }: IconProps) {
   );
 }
 
+// Baris toggle collapse/expand — sengaja jadi bagian dari alur sidebar (bukan
+// floating di tepi), biar ga pernah nabrak/nutupin item nav lain pas collapsed.
+function CollapseToggle({
+  collapsed,
+  onToggle,
+}: {
+  collapsed: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={collapsed ? "Perluas sidebar" : "Ciutkan sidebar"}
+      className={cn(
+        "group flex w-full items-center gap-2 border-b-4 border-black bg-white px-4 py-2.5 transition-colors hover:bg-[#FFD400]",
+        collapsed && "justify-center px-0",
+      )}
+    >
+      <IconChevronDouble
+        className={cn(
+          "h-3.5 w-3.5 shrink-0 transition-transform duration-300",
+          collapsed && "rotate-180",
+        )}
+      />
+      {!collapsed && (
+        <span
+          className={cn(
+            spaceMono.className,
+            "text-[9px] uppercase tracking-widest text-black/50 group-hover:text-black",
+          )}
+        >
+          Minimize Sidebar
+        </span>
+      )}
+    </button>
+  );
+}
+
 type NavItem = {
   label: string;
+  shortLabel: string;
   href: string;
   icon: ComponentType<IconProps>;
   activeBg: string;
@@ -130,6 +171,7 @@ type NavItem = {
 const navItems: NavItem[] = [
   {
     label: "Peserta",
+    shortLabel: "Data peserta lomba",
     href: "/dashboard",
     icon: IconUsers,
     activeBg: "bg-[#FF5A1F]",
@@ -138,6 +180,7 @@ const navItems: NavItem[] = [
   },
   {
     label: "Verifikasi Transfer",
+    shortLabel: "Cek bukti transfer manual",
     href: "/dashboard/transfer",
     icon: IconTransfer,
     activeBg: "bg-[#3B82F6]",
@@ -146,6 +189,7 @@ const navItems: NavItem[] = [
   },
   {
     label: "Promo",
+    shortLabel: "Kode diskon & voucher",
     href: "/dashboard/promo",
     icon: IconTag,
     activeBg: "bg-[#7ED957]",
@@ -154,6 +198,7 @@ const navItems: NavItem[] = [
   },
   {
     label: "Scan",
+    shortLabel: "Scan tiket di venue",
     href: "/dashboard/scan",
     icon: IconScan,
     activeBg: "bg-[#FFD400]",
@@ -162,6 +207,7 @@ const navItems: NavItem[] = [
   },
   {
     label: "Settings",
+    shortLabel: "Pengaturan & log aktivitas",
     href: "/dashboard/settings",
     icon: IconSettings,
     activeBg: "bg-[#A78BFA]",
@@ -172,6 +218,24 @@ const navItems: NavItem[] = [
 
 const LOGO_URL =
   "https://cdn.quatrolympic.com/41028044-a720-48f0-b91c-74e271968c6e.png";
+
+const RACE_DATE = new Date("2026-08-23T06:00:00+07:00").getTime();
+
+function useDaysToRace() {
+  const [days, setDays] = useState<number | null>(null);
+
+  useEffect(() => {
+    function update() {
+      const diff = RACE_DATE - Date.now();
+      setDays(diff > 0 ? Math.ceil(diff / 86_400_000) : 0);
+    }
+    update();
+    const id = setInterval(update, 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  return days;
+}
 
 export default function Sidebar({
   userEmail,
@@ -189,6 +253,7 @@ export default function Sidebar({
   const [participantCount, setParticipantCount] = useState(
     initialParticipantCount,
   );
+  const daysToRace = useDaysToRace();
 
   // Tutup drawer otomatis tiap kali pindah halaman.
   useEffect(() => {
@@ -243,7 +308,7 @@ export default function Sidebar({
   return (
     <>
       {/* Topbar mobile: cuma tampil di bawah breakpoint lg */}
-      <header className="sticky top-0 z-40 flex items-center justify-between border-b-4 border-[#dfd2b9] bg-[#FDF6E9] px-4 py-3 lg:hidden">
+      <header className="sticky top-0 z-40 flex items-center justify-between border-b-4 border-black bg-[#FDF6E9] px-4 py-3 lg:hidden">
         <Link href="/" className="flex shrink-0 items-center gap-2">
           <Image
             src={LOGO_URL}
@@ -288,32 +353,19 @@ export default function Sidebar({
       {/* Sidebar tetap (fixed) buat layar lg ke atas, bisa di-collapse */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-30 hidden flex-col border-r-4 border-[#dfd2b9] bg-[#FDF6E9] transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] lg:flex",
-          collapsed ? "w-20" : "w-64",
+          "fixed inset-y-0 left-0 z-30 hidden flex-col border-r-4 border-black bg-[#FDF6E9] transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] lg:flex",
+          collapsed ? "w-20" : "w-72",
         )}
       >
         <SidebarContent
           isActive={isActive}
           userEmail={userEmail}
           participantCount={participantCount}
+          daysToRace={daysToRace}
           onNavigate={() => {}}
           collapsed={collapsed}
+          onToggleCollapsed={onToggleCollapsed}
         />
-
-        {/* Tombol collapse/expand — cuma di desktop */}
-        <button
-          type="button"
-          onClick={onToggleCollapsed}
-          aria-label={collapsed ? "Perluas sidebar" : "Ciutkan sidebar"}
-          className="absolute -right-4 top-20 flex h-8 w-8 items-center justify-center border-4 border-black bg-white shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] transition-transform hover:-translate-y-0.5 active:translate-y-0 active:shadow-none"
-        >
-          <IconChevron
-            className={cn(
-              "h-3.5 w-3.5 transition-transform duration-300",
-              collapsed && "rotate-180",
-            )}
-          />
-        </button>
       </aside>
 
       {/* Overlay + drawer buat mobile/tablet */}
@@ -330,12 +382,12 @@ export default function Sidebar({
         aria-modal="true"
         aria-label="Menu admin"
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-72 max-w-[80vw] flex-col border-r-4 border-[#dfd2b9] bg-[#FDF6E9]",
+          "fixed inset-y-0 left-0 z-50 flex w-72 max-w-[80vw] flex-col border-r-4 border-black bg-[#FDF6E9]",
           "transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] lg:hidden",
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <div className="flex items-center justify-between border-b-4 border-[#dfd2b9] px-5 py-4">
+        <div className="flex items-center justify-between border-b-4 border-black px-5 py-4">
           <span
             className={cn(
               SpecialGhotic.className,
@@ -370,6 +422,7 @@ export default function Sidebar({
           isActive={isActive}
           userEmail={userEmail}
           participantCount={participantCount}
+          daysToRace={daysToRace}
           onNavigate={() => setOpen(false)}
           collapsed={false}
         />
@@ -378,68 +431,157 @@ export default function Sidebar({
   );
 }
 
+// Pola titik-titik halus di header, biar ada tekstur tanpa ganggu keterbacaan.
+function DotPattern() {
+  return (
+    <svg
+      aria-hidden
+      className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.15]"
+    >
+      <defs>
+        <pattern
+          id="sidebar-dots"
+          width="10"
+          height="10"
+          patternUnits="userSpaceOnUse"
+        >
+          <circle cx="1.5" cy="1.5" r="1.5" fill="black" />
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#sidebar-dots)" />
+    </svg>
+  );
+}
+
 function SidebarContent({
   isActive,
   userEmail,
   participantCount,
+  daysToRace,
   onNavigate,
   collapsed,
+  onToggleCollapsed,
 }: {
   isActive: (href: string) => boolean;
   userEmail: string;
   participantCount: number;
+  daysToRace: number | null;
   onNavigate: () => void;
   collapsed: boolean;
+  onToggleCollapsed?: () => void;
 }) {
   const initials = userEmail ? userEmail.slice(0, 2).toUpperCase() : "AD";
 
   return (
     <>
+      {/* Header / brand strip */}
       <div
         className={cn(
-          "hidden items-center gap-3 border-b-4 border-[#dfd2b9] px-5 py-5 lg:flex",
-          collapsed && "justify-center px-3",
+          "relative hidden overflow-hidden border-b-4 border-black bg-[#FFF7DA] px-5 py-5 lg:flex lg:flex-col lg:gap-3",
+          collapsed && "items-center px-3",
         )}
       >
-        <Link href="/" className="relative shrink-0">
-          <Image
-            src={LOGO_URL}
-            alt="Logo ACS"
-            width={40}
-            height={40}
-            priority
-          />
-        </Link>
-        {!collapsed && (
-          <span
-            className={cn(
-              SpecialGhotic.className,
-              "text-sm uppercase leading-tight tracking-tight",
-            )}
+        <DotPattern />
+        <div className="relative flex items-center gap-3">
+          <Link
+            href="/"
+            className="relative shrink-0 border-2 border-black bg-white p-1 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
           >
-            ACS
-          </span>
+            <Image
+              src={LOGO_URL}
+              alt="Logo ACS"
+              width={collapsed ? 28 : 34}
+              height={collapsed ? 28 : 34}
+              priority
+            />
+          </Link>
+          {!collapsed && (
+            <div className="min-w-0">
+              <span
+                className={cn(
+                  SpecialGhotic.className,
+                  "block text-base uppercase leading-none tracking-tight",
+                )}
+              >
+                ACS 2026
+              </span>
+              <span
+                className={cn(
+                  spaceMono.className,
+                  "mt-1 block text-[9px] uppercase tracking-widest text-black/50",
+                )}
+              >
+                Panel Panitia
+              </span>
+            </div>
+          )}
+        </div>
+
+        {!collapsed && (
+          <div className="relative border-2 border-black bg-black py-1.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+            <Marquee speed={28} gradient={false} pauseOnHover>
+              <span
+                className={cn(
+                  spaceMono.className,
+                  "mx-4 text-[10px] uppercase tracking-widest text-white",
+                )}
+              >
+                ARCHIPELAPACE · Rhythm of a Thousand Islands
+              </span>
+              <span
+                className={cn(
+                  spaceMono.className,
+                  "mx-4 text-[10px] uppercase tracking-widest text-[#FFD400]",
+                )}
+              >
+                {daysToRace === null
+                  ? "Memuat hitung mundur..."
+                  : daysToRace > 0
+                    ? `H-${daysToRace} menuju race day`
+                    : "Race day! 🏁"}
+              </span>
+            </Marquee>
+          </div>
         )}
       </div>
 
+      {onToggleCollapsed && (
+        <CollapseToggle collapsed={collapsed} onToggle={onToggleCollapsed} />
+      )}
+
+      {/* Nav */}
       <nav
         className={cn(
-          "flex-1 space-y-2 overflow-y-auto px-4 py-5",
+          "flex-1 space-y-2.5 overflow-y-auto px-4 py-5",
           collapsed && "px-3",
         )}
       >
+        {!collapsed && (
+          <p
+            className={cn(
+              spaceMono.className,
+              "px-1 pb-1 text-[9px] uppercase tracking-[0.2em] text-black/40",
+            )}
+          >
+            Menu Utama
+          </p>
+        )}
         {navItems.map(
-          ({ label, href, icon: Icon, activeBg, activeText, dot }) => {
+          (
+            { label, shortLabel, href, icon: Icon, activeBg, activeText, dot },
+            index,
+          ) => {
             const active = isActive(href);
+            const num = String(index + 1).padStart(2, "0");
+
             return (
               <Link
                 key={href}
                 href={href}
                 onClick={onNavigate}
                 aria-current={active ? "page" : undefined}
-                title={collapsed ? label : undefined}
                 className={cn(
-                  "group flex items-center gap-3 border-2 px-3 py-2.5 text-sm font-bold uppercase tracking-wide transition-all",
+                  "group relative flex items-center gap-3 overflow-hidden border-2 px-3 py-2.5 text-sm font-bold uppercase tracking-wide transition-all duration-150",
                   collapsed && "justify-center px-0",
                   active
                     ? cn(
@@ -447,11 +589,31 @@ function SidebarContent({
                         activeBg,
                         activeText,
                       )
-                    : "border-transparent text-black hover:translate-x-0.5 hover:border-black hover:bg-white",
+                    : "border-black/10 text-black hover:-translate-y-0.5 hover:border-black hover:bg-white hover:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]",
                 )}
               >
+                {/* Notch "robek tiket" di pojok kiri item aktif */}
+                {active && (
+                  <span
+                    aria-hidden
+                    className="absolute -left-1.5 top-1/2 h-3 w-3 -translate-y-1/2 rotate-45 border-2 border-black bg-[#FDF6E9]"
+                  />
+                )}
+
+                {!collapsed && (
+                  <span
+                    className={cn(
+                      spaceMono.className,
+                      "shrink-0 text-[9px] opacity-40 transition-opacity group-hover:opacity-70",
+                      active && "!opacity-70",
+                    )}
+                  >
+                    {num}
+                  </span>
+                )}
+
                 <span className="relative shrink-0">
-                  <Icon className="h-5 w-5" />
+                  <Icon className="h-5 w-5 transition-transform duration-150 group-hover:scale-110" />
                   {!active && (
                     <span
                       className={cn(
@@ -461,18 +623,32 @@ function SidebarContent({
                     />
                   )}
                 </span>
-                {!collapsed && label}
+
+                {!collapsed && <span className="truncate">{label}</span>}
+
+                {/* Tooltip pas collapsed */}
+                {collapsed && (
+                  <span
+                    className={cn(
+                      spaceMono.className,
+                      "pointer-events-none absolute left-full ml-3 z-40 whitespace-nowrap border-2 border-black bg-black px-2.5 py-1.5 text-[10px] normal-case tracking-normal text-white opacity-0 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] transition-opacity duration-150 group-hover:opacity-100",
+                    )}
+                  >
+                    <span className="block font-bold uppercase tracking-widest text-[#FFD400]">
+                      {label}
+                    </span>
+                    <span className="block text-white/70">{shortLabel}</span>
+                  </span>
+                )}
               </Link>
             );
           },
         )}
       </nav>
 
+      {/* Footer */}
       <div
-        className={cn(
-          "border-t-4 border-[#dfd2b9] px-4 py-4",
-          collapsed && "px-3",
-        )}
+        className={cn("border-t-4 border-black px-4 py-4", collapsed && "px-3")}
       >
         {!collapsed && (
           <div className="mb-3 flex items-center justify-between border-2 border-black bg-white px-3 py-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
@@ -493,15 +669,20 @@ function SidebarContent({
           </div>
         )}
 
+        {/* Kartu identitas admin, gaya "ID badge" */}
         <div
           className={cn(
-            "flex items-center gap-2.5",
-            collapsed && "flex-col gap-3",
+            "relative flex items-center gap-2.5 border-2 border-black bg-white px-2.5 py-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]",
+            collapsed && "flex-col gap-2 px-1.5 py-2.5",
           )}
         >
+          <span
+            aria-hidden
+            className="absolute left-0 top-0 h-full w-1.5 bg-[#FFD400]"
+          />
           <div
             className={cn(
-              "flex h-9 w-9 shrink-0 items-center justify-center border-2 border-black bg-[#FFD400]",
+              "flex h-9 w-9 shrink-0 items-center justify-center border-2 border-black bg-[#FFD400] -rotate-3",
               spaceMono.className,
               "text-[10px] font-bold",
             )}
@@ -510,14 +691,25 @@ function SidebarContent({
             {initials}
           </div>
           {!collapsed && (
-            <p
-              className={cn(
-                spaceMono.className,
-                "min-w-0 flex-1 truncate text-[10px] uppercase tracking-widest text-black/50",
-              )}
-            >
-              {userEmail}
-            </p>
+            <div className="min-w-0 flex-1">
+              <p
+                className={cn(
+                  spaceMono.className,
+                  "truncate text-[10px] uppercase tracking-widest text-black",
+                )}
+                title={userEmail}
+              >
+                {userEmail}
+              </p>
+              <p
+                className={cn(
+                  spaceMono.className,
+                  "text-[8px] uppercase tracking-widest text-black/40",
+                )}
+              >
+                Admin · Panitia
+              </p>
+            </div>
           )}
         </div>
 

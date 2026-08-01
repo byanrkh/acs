@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { Fragment, useMemo, useState, useTransition } from "react";
 import * as XLSX from "xlsx";
 import { resendRegistrationEmail } from "@/libs/actions/admin";
 import { spaceMono, SpecialGhotic } from "@/libs/Font";
@@ -36,6 +36,208 @@ const STATUS_COLOR: Record<string, string> = {
   expired: "bg-black/20",
 };
 
+function formatDateTime(iso: string | null) {
+  return iso
+    ? new Intl.DateTimeFormat("id-ID", {
+        dateStyle: "medium",
+        timeStyle: "short",
+        timeZone: "Asia/Jakarta",
+      }).format(new Date(iso))
+    : "-";
+}
+
+// Salin teks singkat ke clipboard, dipakai buat ID / email / telepon di panel detail.
+function CopyChip({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(value);
+    } catch {
+      const textarea = document.createElement("textarea");
+      textarea.value = value;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      try {
+        document.execCommand("copy");
+      } catch {
+        // no-op — kalau ini gagal juga, biarin user salin manual.
+      }
+      document.body.removeChild(textarea);
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1200);
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      title="Salin"
+      className="ml-1.5 inline-flex h-4 w-4 shrink-0 items-center justify-center align-middle text-black/30 transition-colors hover:text-black"
+    >
+      {copied ? (
+        <svg viewBox="0 0 16 16" width="11" height="11" fill="none">
+          <path
+            d="M2.5 8.5l3 3 8-8"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      ) : (
+        <svg viewBox="0 0 16 16" width="11" height="11" fill="none">
+          <rect
+            x="5.5"
+            y="5.5"
+            width="8"
+            height="8"
+            rx="1"
+            stroke="currentColor"
+            strokeWidth="1.6"
+          />
+          <path
+            d="M3.5 10.5h-1a1 1 0 01-1-1v-7a1 1 0 011-1h7a1 1 0 011 1v1"
+            stroke="currentColor"
+            strokeWidth="1.6"
+          />
+        </svg>
+      )}
+    </button>
+  );
+}
+
+// Satu baris label/value di dalam panel detail — dipakai berulang di tiap seksi.
+function DetailField({
+  label,
+  children,
+  copyValue,
+}: {
+  label: string;
+  children: React.ReactNode;
+  copyValue?: string;
+}) {
+  return (
+    <div>
+      <p
+        className={cn(
+          spaceMono.className,
+          "text-[9px] uppercase tracking-widest text-black/40",
+        )}
+      >
+        {label}
+      </p>
+      <p className="mt-0.5 flex items-center break-words text-sm font-bold">
+        {children}
+        {copyValue && <CopyChip value={copyValue} />}
+      </p>
+    </div>
+  );
+}
+
+function DetailSection({
+  title,
+  accent,
+  children,
+}: {
+  title: string;
+  accent: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="border-2 border-black bg-white">
+      <div
+        className={cn(
+          "flex items-center gap-2 border-b-2 border-black px-3 py-1.5",
+          accent,
+        )}
+      >
+        <h3
+          className={cn(
+            SpecialGhotic.className,
+            "text-[11px] uppercase tracking-tight",
+          )}
+        >
+          {title}
+        </h3>
+      </div>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-3 p-3 sm:grid-cols-3">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// Panel detail lengkap — semua kolom data ditampilkan, dikelompokkan biar gampang
+// dibaca, gayanya kaya kartu boarding pass / audit trail, bukan cuma daftar rata.
+function DetailPanel({ r }: { r: Registration }) {
+  return (
+    <div className="space-y-3 border-t-4 border-black bg-[#FFF7DA] p-4">
+      <DetailSection title="Identitas" accent="bg-[#FFD400]">
+        <DetailField label="ID Registrasi" copyValue={r.id}>
+          <span className="truncate font-normal text-black/60">{r.id}</span>
+        </DetailField>
+        <DetailField label="Nama Lengkap">{r.nama_lengkap}</DetailField>
+        <DetailField label="Nama di BIB">{r.nama_bib}</DetailField>
+        <DetailField label="Jenis Kelamin">
+          {r.jenis_kelamin === "L" ? "Laki-laki" : "Perempuan"}
+        </DetailField>
+        <DetailField label="Golongan Darah">
+          {r.golongan_darah || "-"}
+        </DetailField>
+        <DetailField label="Kategori">
+          <span className="capitalize">{r.kategori}</span>
+        </DetailField>
+      </DetailSection>
+
+      <DetailSection title="Kontak" accent="bg-[#7ED957]">
+        <DetailField label="Email" copyValue={r.email}>
+          <span className="truncate">{r.email}</span>
+        </DetailField>
+        <DetailField label="Telepon" copyValue={r.telepon}>
+          {r.telepon}
+        </DetailField>
+      </DetailSection>
+
+      <DetailSection
+        title="Event & BIB"
+        accent="bg-[#3B82F6] [&_h3]:text-white"
+      >
+        <DetailField label="Nomor BIB">
+          {r.bib_number ?? <span className="text-black/30">Belum ada</span>}
+        </DetailField>
+        <DetailField label="Ukuran Jersey">{r.ukuran_jersey}</DetailField>
+        <DetailField label="Status">
+          <span
+            className={cn(
+              "inline-block border-2 border-black px-2 py-0.5 text-[10px] font-bold uppercase",
+              STATUS_COLOR[r.status],
+            )}
+          >
+            {STATUS_LABEL[r.status] ?? r.status}
+          </span>
+        </DetailField>
+      </DetailSection>
+
+      <DetailSection title="Waktu & Race Pack" accent="bg-[#A78BFA]">
+        <DetailField label="Tanggal Daftar">
+          {formatDateTime(r.created_at)}
+        </DetailField>
+        <DetailField label="Race Pack Diambil">
+          {r.race_pack_taken_at ? "✅ Sudah" : "— Belum"}
+        </DetailField>
+        <DetailField label="Waktu Pengambilan">
+          {r.race_pack_taken_at ? formatDateTime(r.race_pack_taken_at) : "-"}
+        </DetailField>
+      </DetailSection>
+    </div>
+  );
+}
+
 export default function RegistrationsTable({
   registrations,
   isLive,
@@ -65,15 +267,6 @@ export default function RegistrationsTable({
   }, [registrations, query, statusFilter]);
 
   function handleExport() {
-    const formatDateTime = (iso: string | null) =>
-      iso
-        ? new Intl.DateTimeFormat("id-ID", {
-            dateStyle: "medium",
-            timeStyle: "short",
-            timeZone: "Asia/Jakarta",
-          }).format(new Date(iso))
-        : "-";
-
     // Semua kolom dijabarin lengkap, bukan cuma ringkasan yang tampil di UI.
     const rows = filtered.map((r) => ({
       "ID Registrasi": r.id,
@@ -144,6 +337,10 @@ export default function RegistrationsTable({
   const resendLabel = (status: string) =>
     status === "confirmed" ? "Resend E-Tiket" : "Remind";
 
+  function toggleExpanded(id: string) {
+    setExpandedId((prev) => (prev === id ? null : id));
+  }
+
   return (
     <div className="border-4 border-black bg-white shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
       <div className="flex flex-col gap-4 border-b-4 border-black bg-[#FDF6E9] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
@@ -204,7 +401,7 @@ export default function RegistrationsTable({
         </select>
       </div>
 
-      {/* Tabel — desktop */}
+      {/* Tabel — desktop. Klik baris buat buka panel detail lengkap ala audit log. */}
       <div className="hidden overflow-x-auto border-t-4 border-black sm:block">
         <table className="w-full min-w-[1150px] text-left text-sm">
           <thead>
@@ -214,6 +411,7 @@ export default function RegistrationsTable({
                 "border-b-4 border-black bg-black text-[10px] uppercase tracking-widest text-white",
               )}
             >
+              <th className="w-8 px-3 py-3" />
               <th className="px-3 py-3">BIB</th>
               <th className="px-3 py-3">Nama</th>
               <th className="px-3 py-3">Nama di BIB</th>
@@ -227,59 +425,91 @@ export default function RegistrationsTable({
             </tr>
           </thead>
           <tbody>
-            {filtered.map((r) => (
-              <tr
-                key={r.id}
-                className="border-b-2 border-black/10 last:border-b-0 even:bg-black/[0.02]"
-              >
-                <td className="px-3 py-3 font-bold">{r.bib_number ?? "-"}</td>
-                <td className="px-3 py-3">{r.nama_lengkap}</td>
-                <td className="px-3 py-3 text-black/70">{r.nama_bib}</td>
-                <td className="px-3 py-3 text-black/70">{r.email}</td>
-                <td className="px-3 py-3 text-black/70">{r.telepon}</td>
-                <td className="px-3 py-3 capitalize">{r.kategori}</td>
-                <td className="px-3 py-3">{r.ukuran_jersey}</td>
-                <td className="px-3 py-3">
-                  <span
+            {filtered.map((r) => {
+              const isOpen = expandedId === r.id;
+              return (
+                <Fragment key={r.id}>
+                  <tr
+                    key={r.id}
+                    onClick={() => toggleExpanded(r.id)}
                     className={cn(
-                      "inline-block border-2 border-black px-2 py-0.5 text-[10px] font-bold uppercase",
-                      STATUS_COLOR[r.status],
+                      "cursor-pointer border-b-2 border-black/10 transition-colors last:border-b-0",
+                      isOpen
+                        ? "bg-[#FFF7DA]"
+                        : "even:bg-black/[0.02] hover:bg-black/[0.04]",
                     )}
                   >
-                    {STATUS_LABEL[r.status] ?? r.status}
-                  </span>
-                </td>
-                <td className="px-3 py-3">
-                  {r.race_pack_taken_at ? "✅ Sudah" : "—"}
-                </td>
-                <td className="px-3 py-3">
-                  {canResend(r.status) ? (
-                    <div>
-                      <button
-                        type="button"
-                        onClick={() => handleResend(r.id)}
-                        disabled={isPending && resendingId === r.id}
-                        className="border-2 border-black bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-widest hover:bg-black hover:text-white disabled:opacity-50"
+                    <td className="px-3 py-3 text-black/30">
+                      {isOpen ? "▾" : "▸"}
+                    </td>
+                    <td className="px-3 py-3 font-bold">
+                      {r.bib_number ?? "-"}
+                    </td>
+                    <td className="px-3 py-3">{r.nama_lengkap}</td>
+                    <td className="px-3 py-3 text-black/70">{r.nama_bib}</td>
+                    <td className="px-3 py-3 text-black/70">{r.email}</td>
+                    <td className="px-3 py-3 text-black/70">{r.telepon}</td>
+                    <td className="px-3 py-3 capitalize">{r.kategori}</td>
+                    <td className="px-3 py-3">{r.ukuran_jersey}</td>
+                    <td className="px-3 py-3">
+                      <span
+                        className={cn(
+                          "inline-block border-2 border-black px-2 py-0.5 text-[10px] font-bold uppercase",
+                          STATUS_COLOR[r.status],
+                        )}
                       >
-                        {resendingId === r.id
-                          ? "Mengirim..."
-                          : resendLabel(r.status)}
-                      </button>
-                      {feedback[r.id] && (
-                        <p className="mt-1 text-[10px] font-bold text-[#1F4B33]">
-                          {feedback[r.id]}
-                        </p>
+                        {STATUS_LABEL[r.status] ?? r.status}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3">
+                      {r.race_pack_taken_at ? "✅ Sudah" : "—"}
+                    </td>
+                    <td
+                      className="px-3 py-3"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {canResend(r.status) ? (
+                        <div>
+                          <button
+                            type="button"
+                            onClick={() => handleResend(r.id)}
+                            disabled={isPending && resendingId === r.id}
+                            className="border-2 border-black bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-widest hover:bg-black hover:text-white disabled:opacity-50"
+                          >
+                            {resendingId === r.id
+                              ? "Mengirim..."
+                              : resendLabel(r.status)}
+                          </button>
+                          {feedback[r.id] && (
+                            <p className="mt-1 text-[10px] font-bold text-[#1F4B33]">
+                              {feedback[r.id]}
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-black/30">—</span>
                       )}
-                    </div>
-                  ) : (
-                    <span className="text-black/30">—</span>
+                    </td>
+                  </tr>
+                  {isOpen && (
+                    <tr
+                      key={`${r.id}-detail`}
+                      className="border-b-2 border-black/10"
+                    >
+                      <td colSpan={11} className="p-0">
+                        <DetailPanel r={r} />
+                      </td>
+                    </tr>
                   )}
-                </td>
-              </tr>
-            ))}
+                </Fragment>
+              );
+            })}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={10} className="px-3 py-8 text-center text-black/40">
+                <td
+                  colSpan={11}
+                  className="px-3 py-8 text-center text-black/40"
+                >
                   Tidak ada data yang cocok.
                 </td>
               </tr>
@@ -288,7 +518,7 @@ export default function RegistrationsTable({
         </table>
       </div>
 
-      {/* Card — mobile: ringkas, diketuk buat buka detail lengkap, list-nya di-scroll */}
+      {/* Card — mobile: ringkas seperti biasa, diketuk buat buka panel detail lengkap */}
       <div className="flex max-h-[520px] flex-col overflow-hidden border-t-4 border-black sm:hidden">
         <div className="divide-y-2 divide-black/10 overflow-y-auto">
           {filtered.map((r) => {
@@ -298,7 +528,7 @@ export default function RegistrationsTable({
               <div key={r.id}>
                 <button
                   type="button"
-                  onClick={() => setExpandedId(isOpen ? null : r.id)}
+                  onClick={() => toggleExpanded(r.id)}
                   className="w-full px-4 py-3 text-left"
                 >
                   <div className="flex items-center justify-between gap-2">
@@ -307,7 +537,10 @@ export default function RegistrationsTable({
                         {isOpen ? "▾" : "▸"}
                       </span>
                       <span
-                        className={cn(spaceMono.className, "shrink-0 text-sm font-bold")}
+                        className={cn(
+                          spaceMono.className,
+                          "shrink-0 text-sm font-bold",
+                        )}
                       >
                         {r.bib_number ?? "-"}
                       </span>
@@ -330,57 +563,27 @@ export default function RegistrationsTable({
                 </button>
 
                 {isOpen && (
-                  <div className="space-y-2 border-t-2 border-black/10 bg-[#FFF7DA] px-4 py-3">
-                    <div className="grid grid-cols-2 gap-y-1.5 text-xs">
-                      <div className="col-span-2">
-                        <span className="text-black/40">Nama di BIB: </span>
-                        <span className="font-bold">{r.nama_bib}</span>
-                      </div>
-                      <div>
-                        <span className="text-black/40">Telp: </span>
-                        <span className="font-bold">{r.telepon}</span>
-                      </div>
-                      <div className="capitalize">
-                        <span className="text-black/40">Kategori: </span>
-                        <span className="font-bold">{r.kategori}</span>
-                      </div>
-                      <div>
-                        <span className="text-black/40">Jersey: </span>
-                        <span className="font-bold">{r.ukuran_jersey}</span>
-                      </div>
-                      <div>
-                        <span className="text-black/40">Jenis Kelamin: </span>
-                        <span className="font-bold">
-                          {r.jenis_kelamin === "L" ? "Laki-laki" : "Perempuan"}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-black/40">Gol. Darah: </span>
-                        <span className="font-bold">{r.golongan_darah}</span>
-                      </div>
-                      <div>
-                        <span className="text-black/40">Race Pack: </span>
-                        <span className="font-bold">
-                          {r.race_pack_taken_at ? "✅ Sudah" : "—"}
-                        </span>
-                      </div>
+                  <div>
+                    <DetailPanel r={r} />
+                    <div className="border-t-4 border-black bg-[#FFF7DA] px-4 pb-4">
+                      {canResend(r.status) && (
+                        <button
+                          type="button"
+                          onClick={() => handleResend(r.id)}
+                          disabled={isPending && resendingId === r.id}
+                          className="w-full border-2 border-black bg-white px-3 py-2 text-[11px] font-bold uppercase tracking-widest hover:bg-black hover:text-white disabled:opacity-50"
+                        >
+                          {resendingId === r.id
+                            ? "Mengirim..."
+                            : resendLabel(r.status)}
+                        </button>
+                      )}
+                      {feedback[r.id] && (
+                        <p className="mt-2 text-[11px] font-bold text-[#1F4B33]">
+                          {feedback[r.id]}
+                        </p>
+                      )}
                     </div>
-
-                    {canResend(r.status) && (
-                      <button
-                        type="button"
-                        onClick={() => handleResend(r.id)}
-                        disabled={isPending && resendingId === r.id}
-                        className="w-full border-2 border-black bg-white px-3 py-2 text-[11px] font-bold uppercase tracking-widest hover:bg-black hover:text-white disabled:opacity-50"
-                      >
-                        {resendingId === r.id ? "Mengirim..." : resendLabel(r.status)}
-                      </button>
-                    )}
-                    {feedback[r.id] && (
-                      <p className="text-[11px] font-bold text-[#1F4B33]">
-                        {feedback[r.id]}
-                      </p>
-                    )}
                   </div>
                 )}
               </div>
