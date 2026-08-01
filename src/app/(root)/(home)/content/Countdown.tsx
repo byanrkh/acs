@@ -54,30 +54,39 @@ export default function Countdown() {
       />
 
       <div className="relative mx-auto max-w-5xl px-6 py-10 md:py-14">
-        <p
-          className={cn(
-            spaceMono.className,
-            "text-center text-xs uppercase tracking-widest text-black/70 md:text-sm",
-          )}
-        >
-          Counting down to the big day · Sunday, 23 August 2026
-        </p>
+        <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-center sm:gap-2.5">
+          <span className="relative flex h-2.5 w-2.5 shrink-0">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#1F4B33] opacity-75" />
+            <span className="relative inline-flex h-2.5 w-2.5 rounded-full border border-black bg-[#1F4B33]" />
+          </span>
+          <p
+            className={cn(
+              spaceMono.className,
+              "text-center text-xs uppercase tracking-widest text-black/70 md:text-sm",
+            )}
+          >
+            Counting down to the big day · Sunday, 23 August 2026
+          </p>
+        </div>
 
-        <div className="mt-6 grid grid-cols-2 gap-y-8 sm:grid-cols-4 sm:gap-0 sm:divide-x-4 sm:divide-dashed sm:divide-black/30">
+        <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
           {segments.map((seg) => (
-            <div key={seg.label} className="flex flex-col items-center px-2">
+            <div
+              key={seg.label}
+              className="group border-4 border-black bg-[#FDF6E9] px-2 py-4 text-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-transform hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] sm:py-6"
+            >
               <span
                 className={cn(
                   SpecialGhotic.className,
-                  "text-6xl tabular-nums text-[#1F4B33] sm:text-7xl md:text-8xl",
+                  "block text-5xl tabular-nums text-[#1F4B33] sm:text-6xl md:text-7xl",
                 )}
               >
                 {seg.value === undefined ? "--" : pad(seg.value)}
               </span>
               <span
                 className={cn(
-                  SpecialGhotic.className,
-                  "mt-1 text-xs uppercase tracking-widest text-[#1F4B33] md:text-sm",
+                  spaceMono.className,
+                  "mt-1 block text-[10px] uppercase tracking-widest text-[#1F4B33]/70 md:text-xs",
                 )}
               >
                 {seg.label}

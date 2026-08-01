@@ -1,10 +1,11 @@
 import Container from "@/components/Container";
 import Button from "@/components/Button";
+import PageHero from "@/components/PageHero";
+import CtaBanner from "@/components/CtaBanner";
 import InfoAccordion from "@/components/information/InfoAccordion";
 import InfoTimeline from "@/components/information/InfoTimeline";
 import { spaceMono, SpecialGhotic } from "@/libs/Font";
 import { cn } from "@/libs/cn";
-import Link from "next/link";
 import Image from "next/image";
 
 const quickFacts = [
@@ -19,57 +20,10 @@ const quickFacts = [
 export default function InformationPage() {
   return (
     <div className="overflow-hidden">
-      {/* HERO */}
-      <section className="relative border-b-4 border-black bg-[#FF5A1F] py-16 sm:py-20">
-        <div
-          aria-hidden
-          className="absolute inset-0 opacity-15"
-          style={{
-            backgroundImage:
-              "radial-gradient(rgba(0,0,0,0.6) 1.6px, transparent 1.6px)",
-            backgroundSize: "22px 22px",
-          }}
-        />
-        <span
-          aria-hidden
-          className="absolute -left-6 top-10 h-16 w-16 rotate-12 border-4 border-black bg-[#FFD400] sm:h-24 sm:w-24"
-        />
-        <span
-          aria-hidden
-          className="absolute -right-8 bottom-6 h-20 w-20 -rotate-12 border-4 border-black bg-[#7ED957] sm:h-28 sm:w-28"
-        />
-
-        <Container>
-          <div className="relative text-center">
-            <span
-              className={cn(
-                SpecialGhotic.className,
-                "inline-block -rotate-2 border-4 border-black text-black bg-[#7ED957] px-4 py-1.5 text-xs uppercase tracking-tight shadow-[4px_4px_0px_0px_#000] sm:text-sm",
-              )}
-            >
-              ACS 2026
-            </span>
-
-            <h1
-              className={cn(
-                SpecialGhotic.className,
-                "mt-6 text-4xl uppercase leading-[0.9] tracking-tight text-black sm:text-7xl md:text-8xl",
-              )}
-            >
-              Information
-            </h1>
-
-            <p
-              className={cn(
-                spaceMono.className,
-                "mx-auto mt-5 max-w-lg text-xs uppercase tracking-widest text-black sm:text-sm",
-              )}
-            >
-              ACS 2026 : Information &amp; Guidelines
-            </p>
-          </div>
-        </Container>
-      </section>
+      <PageHero
+        title="Information"
+        subtitle="ACS 2026 : Information & Guidelines"
+      />
 
       <Container>
         {/* INTRO */}
@@ -115,6 +69,23 @@ export default function InformationPage() {
               </p>
             </div>
 
+            {/* Fakta penting ala bib info — sebelumnya cuma didefinisikan, ga
+                pernah ditampilkan; sekarang kepakai beneran */}
+            <div className="mt-6 flex flex-wrap gap-3">
+              {quickFacts.map((f) => (
+                <span
+                  key={f.label}
+                  className={cn(
+                    spaceMono.className,
+                    "inline-flex items-center gap-2 border-2 border-black bg-[#FDF6E9] px-3 py-1.5 text-[11px] uppercase tracking-widest shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]",
+                  )}
+                >
+                  <span aria-hidden>{f.icon}</span>
+                  {f.value}
+                </span>
+              ))}
+            </div>
+
             <div className="mt-8 flex flex-wrap gap-4">
               <Button href="/contact">Contact Us ↗</Button>
               <Button href="/registration" variant="secondary">
@@ -124,16 +95,15 @@ export default function InformationPage() {
           </div>
         </section>
 
-        {/* QUICK FACTS */}
+        {/* PRICE LIST + POSTER */}
         <section className="mt-10 sm:mt-14">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div
-              className={cn(
-                "border-4 border-black rounded-xl bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-transform hover:-translate-y-1",
-              )}
-            >
-              <div className="relative p-4 sm:p-5 bg-emerald-600 rounded-tl-lg rounded-tr-lg border-b-4 border-black/50 text-center ">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            {/* Price list, gaya "race bib" — nomor & nominal ditonjolkan kayak
+                bib number, bukan kartu generik */}
+            <div className="flex flex-col border-4 border-black bg-white shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] transition-transform hover:-translate-y-1">
+              <div className="relative border-b-4 border-black bg-[#7ED957] px-5 py-4 text-center">
                 <div
+                  aria-hidden
                   className="absolute inset-0 opacity-15"
                   style={{
                     backgroundImage:
@@ -141,45 +111,77 @@ export default function InformationPage() {
                     backgroundSize: "22px 22px",
                   }}
                 />
-                <p className="font-bold text-xl">PRICE LIST</p>
-              </div>
-              <div className="p-5 my-3 sm:p-6">
-                <div className="flex justify-between items-center">
-                  <p className="text-xl opacity-70 font-medium">Pelajar</p>
-                  <p className="text-2xl font-extrabold">Rp 200.000,00</p>
-                </div>
-                <hr className="my-3 border-b border-black/20" />
-                <div className="flex justify-between items-center">
-                  <p className="text-xl opacity-70 font-medium">Umum</p>
-                  <p className="text-2xl font-extrabold">Rp 225.000,00</p>
-                </div>
-              </div>
-              <div className="relative p-5 border-t-4 border-black/50 bg-emerald-600 rounded-bl-lg rounded-br-lg">
-                <Link
-                  className="border-4 w-full text-lg bg-pink-500 hover:bg-pink-400 duration-150 flex items-center justify-center py-3 rounded-lg font-bold"
-                  href="/"
+                <p
+                  className={cn(
+                    SpecialGhotic.className,
+                    "relative text-lg uppercase tracking-tight text-black sm:text-xl",
+                  )}
                 >
+                  Price List
+                </p>
+              </div>
+
+              <div className="flex-1 space-y-3 p-5 sm:p-6">
+                <div className="flex items-center justify-between border-2 border-black/10 bg-[#FDF6E9] px-4 py-3">
+                  <p
+                    className={cn(
+                      spaceMono.className,
+                      "text-xs uppercase tracking-widest text-black/60",
+                    )}
+                  >
+                    Pelajar
+                  </p>
+                  <p
+                    className={cn(
+                      SpecialGhotic.className,
+                      "text-xl tracking-tight sm:text-2xl",
+                    )}
+                  >
+                    Rp200.000
+                  </p>
+                </div>
+                <div className="flex items-center justify-between border-2 border-black/10 bg-[#FDF6E9] px-4 py-3">
+                  <p
+                    className={cn(
+                      spaceMono.className,
+                      "text-xs uppercase tracking-widest text-black/60",
+                    )}
+                  >
+                    Umum
+                  </p>
+                  <p
+                    className={cn(
+                      SpecialGhotic.className,
+                      "text-xl tracking-tight sm:text-2xl",
+                    )}
+                  >
+                    Rp225.000
+                  </p>
+                </div>
+              </div>
+
+              <div className="border-t-4 border-black p-5 sm:p-6">
+                <Button href="/registration" className="w-full justify-center">
                   Daftar
-                </Link>
+                </Button>
               </div>
             </div>
-            <div
-              className={cn(
-                "border-4 border-black rounded-xl bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-transform hover:-translate-y-1",
-              )}
-            >
-              <div className="p-4 sm:p-5 w-full h-full relative bg-emerald-600 rounded-lg ">
-                <img
-                  className="rounded-md border-4"
-                  src={
-                    "https://cdn.quatrolympic.com/1784867389144-a03ed0d9-bd5b-4f9d-9ec4-0eac46e42761_1.jpg"
-                  }
+
+            {/* Poster / dokumentasi pendukung */}
+            <div className="relative overflow-hidden border-4 border-black bg-white shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] transition-transform hover:-translate-y-1">
+              <div className="relative aspect-[4/3] w-full sm:aspect-auto sm:h-full">
+                <Image
+                  src="https://cdn.quatrolympic.com/1784867389144-a03ed0d9-bd5b-4f9d-9ec4-0eac46e42761_1.jpg"
+                  alt="Dokumentasi kegiatan ACS"
+                  fill
+                  className="object-cover"
                 />
               </div>
             </div>
           </div>
         </section>
 
+        {/* VENUE */}
         <section className="mt-16 sm:mt-24">
           <div className="mb-8 sm:mb-10">
             <span
@@ -196,7 +198,7 @@ export default function InformationPage() {
                 "mt-2 text-3xl uppercase tracking-tight sm:text-4xl",
               )}
             >
-              VENUE & TRACK
+              VENUE &amp; TRACK
             </h2>
           </div>
         </section>
@@ -225,6 +227,7 @@ export default function InformationPage() {
           <InfoTimeline />
         </section>
 
+        {/* TERMS */}
         <section className="mt-16 sm:mt-24">
           <div className="mb-8 sm:mb-10">
             <span
@@ -244,42 +247,17 @@ export default function InformationPage() {
               Terms Of Service - ACS FUN RUN
             </h2>
           </div>
-          <p className="text-sm opacity-50 mb-5">Last Updated: 20/07/2026</p>
+          <p className="mb-5 text-sm text-black/50">Last Updated: 20/07/2026</p>
           <InfoAccordion />
         </section>
 
-        {/* CTA BANNER */}
-        <section className="my-16 sm:my-24">
-          <div className="relative overflow-hidden border-4 border-black bg-black px-6 py-12 text-center shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] sm:px-10 sm:py-16">
-            <span
-              aria-hidden
-              className="absolute -left-10 -top-10 h-32 w-32 rotate-12 rounded-full border-4 border-white/20"
-            />
-            <span
-              aria-hidden
-              className="absolute -bottom-12 -right-8 h-40 w-40 -rotate-12 border-4 border-white/20"
-            />
-
-            <h2
-              className={cn(
-                SpecialGhotic.className,
-                "relative text-2xl uppercase leading-tight tracking-tight text-white sm:text-4xl",
-              )}
-            >
-              Siap gabung jadi bagian
-              <br className="hidden sm:block" /> dari ACS 2026?
-            </h2>
-            <p className="relative mx-auto mt-4 max-w-md text-sm text-white/70 sm:text-base">
-              Amankan slot dan nomor BIB kamu sekarang, sebelum penuh.
-            </p>
-            <div className="relative mt-8 flex flex-wrap justify-center gap-4">
-              <Button href="/registration">Register Now</Button>
-              <Button href="/contact" variant="secondary">
-                Contact Us ↗
-              </Button>
-            </div>
-          </div>
-        </section>
+        <CtaBanner
+          heading="Siap gabung jadi bagian"
+          headingBreak="dari ACS 2026?"
+          description="Amankan slot dan nomor BIB kamu sekarang, sebelum penuh."
+          primary={{ href: "/registration", label: "Register Now" }}
+          secondary={{ href: "/contact", label: "Contact Us ↗" }}
+        />
       </Container>
     </div>
   );

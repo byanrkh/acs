@@ -1,5 +1,6 @@
 import Container from "@/components/Container";
-import Button from "@/components/Button";
+import PageHero from "@/components/PageHero";
+import CtaBanner from "@/components/CtaBanner";
 import { spaceMono, SpecialGhotic } from "@/libs/Font";
 import { cn } from "@/libs/cn";
 import { CONTACT_INFO, whatsappHref } from "@/libs/config/contact";
@@ -9,6 +10,7 @@ import {
   FaWhatsapp,
   FaMapMarkerAlt,
 } from "react-icons/fa";
+import Button from "@/components/Button";
 
 const hasWhatsapp =
   CONTACT_INFO.whatsapp !== "-" && CONTACT_INFO.whatsapp.length > 0;
@@ -41,71 +43,10 @@ const contactCards = [
   },
 ];
 
-const faqs = [
-  {
-    q: "📝 Registrasi & Pendaftaran",
-    a: "Sertakan nama lengkap & email yang dipakai saat daftar supaya panitia bisa cek datanya dengan cepat.",
-  },
-  {
-    q: "Bisa reschedule / refund kalau berhalangan?",
-    a: "Untuk kebijakan reschedule dan refund, silakan hubungi panitia langsung lewat email atau Instagram di atas.",
-  },
-];
-
 export default function ContactPage() {
   return (
     <div className="overflow-hidden">
-      {/* HERO */}
-      <section className="relative border-b-4 border-black bg-[#FF5A1F] py-16 sm:py-20">
-        <div
-          aria-hidden
-          className="absolute inset-0 opacity-15"
-          style={{
-            backgroundImage:
-              "radial-gradient(rgba(0,0,0,0.6) 1.6px, transparent 1.6px)",
-            backgroundSize: "22px 22px",
-          }}
-        />
-        <span
-          aria-hidden
-          className="absolute -left-6 top-10 h-16 w-16 rotate-12 border-4 border-black bg-[#FFD400] sm:h-24 sm:w-24"
-        />
-        <span
-          aria-hidden
-          className="absolute -right-8 bottom-6 h-20 w-20 -rotate-12 border-4 border-black bg-[#7ED957] sm:h-28 sm:w-28"
-        />
-
-        <Container>
-          <div className="relative text-center">
-            <span
-              className={cn(
-                SpecialGhotic.className,
-                "inline-block -rotate-2 border-4 border-black text-black bg-[#7ED957] px-4 py-1.5 text-xs uppercase tracking-tight shadow-[4px_4px_0px_0px_#000] sm:text-sm",
-              )}
-            >
-              ACS 2026
-            </span>
-
-            <h1
-              className={cn(
-                SpecialGhotic.className,
-                "mt-6 text-4xl uppercase leading-[0.9] tracking-tight text-black sm:text-7xl md:text-8xl",
-              )}
-            >
-              Contact
-            </h1>
-
-            <p
-              className={cn(
-                spaceMono.className,
-                "mx-auto mt-5 max-w-lg text-xs uppercase tracking-widest text-black sm:text-sm",
-              )}
-            >
-              Ada pertanyaan? Hubungi kami
-            </p>
-          </div>
-        </Container>
-      </section>
+      <PageHero title="Contact" subtitle="Ada pertanyaan? Hubungi kami" />
 
       <Container>
         {/* CONTACT CARDS */}
@@ -145,8 +86,6 @@ export default function ContactPage() {
                     {c.value}{" "}
                     {c.value === "+62 856-9770-3733" ? "(Gading)" : null}
                   </p>
-
-                  {/* {c.value === "+62 856-9770-3733" ? "(Gading)" : null} */}
                 </a>
               );
             })}
@@ -226,9 +165,9 @@ export default function ContactPage() {
                   "text-base uppercase tracking-tight text-black sm:text-lg",
                 )}
               >
-                📝 Registrasi & Pendaftaran
+                📝 Registrasi &amp; Pendaftaran
               </p>
-              <ul className="list-disc ml-5 mt-2 text-sm leading-relaxed text-black/70">
+              <ul className="ml-5 mt-2 list-disc text-sm leading-relaxed text-black/70">
                 <li>
                   <b>Cara Daftar</b>: Isi formulir di website resmi, pilih
                   kategori (Pelajar/Umum), dan selesaikan pembayaran.
@@ -250,13 +189,13 @@ export default function ContactPage() {
                   "text-base uppercase tracking-tight text-black sm:text-lg",
                 )}
               >
-                💸 Pembatalan & Refund
+                💸 Pembatalan &amp; Refund
               </p>
-              <ul className="list-disc ml-5 mt-2 text-sm leading-relaxed text-black/70">
+              <ul className="ml-5 mt-2 list-disc text-sm leading-relaxed text-black/70">
                 <li>
-                  <b>Kebijakan Refund</b>: Biaya pendaftaran bersifat Final &
-                  Non-Refundable (tidak bisa dikembalikan) dengan alasan apa pun
-                  dari pihak peserta.
+                  <b>Kebijakan Refund</b>: Biaya pendaftaran bersifat Final
+                  &amp; Non-Refundable (tidak bisa dikembalikan) dengan alasan
+                  apa pun dari pihak peserta.
                 </li>
                 <li>
                   <b>Pembatalan Acara</b>: Jika ada pergeseran/pembatalan jadwal
@@ -274,10 +213,10 @@ export default function ContactPage() {
               >
                 🎽 Pengambilan Racepack (RPC)
               </p>
-              <ul className="list-disc ml-5 mt-2 text-sm leading-relaxed text-black/70">
+              <ul className="ml-5 mt-2 list-disc text-sm leading-relaxed text-black/70">
                 <li>
-                  <b>Jadwal & Lokasi</b>: 21-22 Agustus 2026, Lapangan Indoor
-                  SMAI Al Azhar 4
+                  <b>Jadwal &amp; Lokasi</b>: 21-22 Agustus 2026, Lapangan
+                  Indoor SMAI Al Azhar 4
                 </li>
                 <li>
                   <b>Syarat Pengambilan</b>: Membawa Email Konfirmasi
@@ -294,62 +233,27 @@ export default function ContactPage() {
               >
                 🎒 Penitipan Barang (Drop Baggage)
               </p>
-              <ul className="list-disc ml-5">
-                {/* <li>
-                    <b>Fasilitas</b>: Gratis di area Race Village khusus peserta
-                    ber-BIB resmi.
-                  </li>
-                  <li>
-                    <b>Waktu</b>: Buka 1 jam sebelum flag-off dan wajib diambil
-                    maksimal 1 jam setelah acara selesai.
-                  </li>
-                  <li>
-                    <b>Ketentuan</b>: Dilarang menitipkan barang berharga (uang,
-                    laptop, ziplock/dokumen penting, dll.). Panitia tidak
-                    bertanggung jawab atas kerusakan/kehilangan barang berharga.
-                  </li> */}
+              <ul className="ml-5 list-disc">
                 <li>Informasi Menyusul</li>
               </ul>
             </div>
           </div>
         </section>
 
-        {/* CTA BANNER */}
-        <section className="my-16 sm:my-24">
-          <div className="relative overflow-hidden border-4 border-black bg-black px-6 py-12 text-center shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] sm:px-10 sm:py-16">
-            <span
-              aria-hidden
-              className="absolute -left-10 -top-10 h-32 w-32 rotate-12 rounded-full border-4 border-white/20"
-            />
-            <span
-              aria-hidden
-              className="absolute -bottom-12 -right-8 h-40 w-40 -rotate-12 border-4 border-white/20"
-            />
-
-            <h2
-              className={cn(
-                SpecialGhotic.className,
-                "relative text-2xl uppercase leading-tight tracking-tight text-white sm:text-4xl",
-              )}
-            >
-              Masih ada yang mau
-              <br className="hidden sm:block" /> ditanyain?
-            </h2>
-            <p className="relative mx-auto mt-4 max-w-md text-sm text-white/70 sm:text-base">
-              Langsung aja DM Instagram atau email kami, panitia siap bantu.
-            </p>
-            <div className="relative mt-8 flex flex-wrap justify-center gap-4">
-              <Button href={`mailto:${CONTACT_INFO.email}`}>Email Kami</Button>
-              <Button
-                href={CONTACT_INFO.instagramUrl}
-                external
-                variant="secondary"
-              >
-                Instagram ↗
-              </Button>
-            </div>
-          </div>
-        </section>
+        <CtaBanner
+          heading="Masih ada yang mau"
+          headingBreak="ditanyain?"
+          description="Langsung aja DM Instagram atau email kami, panitia siap bantu."
+          primary={{
+            href: `mailto:${CONTACT_INFO.email}`,
+            label: "Email Kami",
+          }}
+          secondary={{
+            href: CONTACT_INFO.instagramUrl,
+            label: "Instagram ↗",
+            external: true,
+          }}
+        />
       </Container>
     </div>
   );
