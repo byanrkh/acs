@@ -35,6 +35,12 @@ export type ScanResult =
     }
   | { ok: false; error: string };
 
+// Kolom yang dipakai bareng oleh lookupRegistrationByScan (QR/HID) dan
+// lookupRegistrationByContact (input manual email/no. HP), biar dua-duanya
+// selalu balikin shape data yang identik ke UI.
+const SCAN_SELECT_FIELDS =
+  "id, nama_lengkap, nama_bib, email, telepon, kategori, nisn, nik_terakhir, ukuran_jersey, jenis_kelamin, golongan_darah, riwayat_penyakit, kontak_darurat_nama, kontak_darurat_telepon, status, bib_number, race_pack_taken_at";
+
 const UUID_PATTERN = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 
 // QR di email isinya URL "https://.../admin/validasi/<uuid>". Fungsi ini
@@ -58,14 +64,84 @@ export async function lookupRegistrationByScan(rawScanValue: string): Promise<Sc
 
   const { data: registration, error } = await supabaseAdmin
     .from("registrations")
-    .select(
-      "id, nama_lengkap, nama_bib, email, telepon, kategori, nisn, nik_terakhir, ukuran_jersey, jenis_kelamin, golongan_darah, riwayat_penyakit, kontak_darurat_nama, kontak_darurat_telepon, status, bib_number, race_pack_taken_at",
-    )
+    .select(SCAN_SELECT_FIELDS)
     .eq("id", registrationId)
     .single();
 
   if (error || !registration) {
     return { ok: false, error: "Peserta tidak ditemukan di database." };
+  }
+
+  if (registration.status !== "confirmed") {
+    return {
+      ok: false,
+      error: `Peserta ditemukan, tapi status pendaftaran belum "confirmed" (status saat ini: ${registration.status}).`,
+    };
+  }
+
+  return { ok: true, registration };
+}
+
+// --- Deteksi & normalisasi buat input manual (email ATAU nomor HP) ---
+
+function looksLikeEmail(value: string): boolean {
+  return value.includes("@");
+}
+
+// Nomor HP di DB disimpan format lokal "08xxxxxxxxxx" (lihat validasi di
+// RegistrationForm). Panitia di venue bisa aja ngetik "+62...", "62...",
+// atau ada spasi/strip — jadi kita normalisasi dulu ke format "0..." biar
+// tetap ketemu meski format ketikannya beda-beda.
+function normalizePhoneNumber(rawValue: string): string {
+  let digits = rawValue.replace(/\D/g, "");
+  if (digits.startsWith("620")) {
+    digits = `0${digits.slice(3)}`;
+  } else if (digits.startsWith("62")) {
+    digits = `0${digits.slice(2)}`;
+  }
+  return digits;
+}
+
+// Dipakai oleh panel "Input Manual" di halaman Scan — fallback kalau QR
+// peserta rusak/ga kebawa, tapi panitia tau email atau nomor HP-nya.
+// Search-nya auto-detect: ada "@" → dianggap email, selain itu → nomor HP.
+export async function lookupRegistrationByContact(
+  rawValue: string,
+): Promise<ScanResult> {
+  const admin = await getAdminUser();
+  if (!admin) {
+    return { ok: false, error: "Sesi login sudah habis, silakan login ulang." };
+  }
+
+  const trimmed = rawValue.trim();
+  if (!trimmed) {
+    return { ok: false, error: "Isi email atau nomor HP peserta dulu." };
+  }
+
+  const isEmail = looksLikeEmail(trimmed);
+  const normalizedPhone = normalizePhoneNumber(trimmed);
+
+  if (!isEmail && normalizedPhone.length < 8) {
+    return { ok: false, error: "Nomor HP tidak valid, cek lagi ketikannya." };
+  }
+
+  const query = supabaseAdmin
+    .from("registrations")
+    .select(SCAN_SELECT_FIELDS)
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  const { data: registrations, error } = isEmail
+    ? await query.ilike("email", trimmed)
+    : await query.eq("telepon", normalizedPhone);
+
+  const registration = registrations?.[0];
+
+  if (error || !registration) {
+    return {
+      ok: false,
+      error: "Peserta dengan email/nomor HP tersebut tidak ditemukan.",
+    };
   }
 
   if (registration.status !== "confirmed") {

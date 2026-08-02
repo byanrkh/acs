@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import {
   lookupRegistrationByScan,
+  lookupRegistrationByContact,
   markRacePackTaken,
   type ScanResult,
 } from "@/libs/actions/admin";
@@ -183,6 +184,32 @@ export default function ScanPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Jalur pencarian manual (fallback kalau QR peserta rusak/ga kebawa):
+  // panitia ketik email ATAU nomor HP, backend yang auto-detect mana yang
+  // dimaksud (lihat lookupRegistrationByContact). Sengaja terpisah dari
+  // processScannedCode karena inputnya bukan hasil decode QR/UUID.
+  function processManualContact(rawValue: string) {
+    const value = rawValue.trim();
+    if (!value) return;
+
+    setTakenJustNow(false);
+    startTransition(async () => {
+      const res = await lookupRegistrationByContact(value);
+      setResult(res);
+      if (res.ok) {
+        playTone(880);
+        pushHistory({
+          label: res.registration.nama_lengkap,
+          sublabel: `BIB ${res.registration.bib_number ?? "-"}`,
+          ok: true,
+        });
+      } else {
+        playTone(220, 260);
+        pushHistory({ label: "Cari gagal", sublabel: res.error, ok: false });
+      }
+    });
+  }
+
   // --- Kamera / webcam (html5-qrcode) — TIDAK diubah selain memanggil
   // processScannedCode() sebagai pengganti logic inline sebelumnya ---
   useEffect(() => {
@@ -282,8 +309,7 @@ export default function ScanPage() {
   function handleManualSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!manualValue.trim()) return;
-    lastScannedRef.current = null; // paksa proses walau sama kaya scan terakhir
-    processScannedCode(manualValue.trim());
+    processManualContact(manualValue);
     setManualValue("");
   }
 
@@ -348,7 +374,9 @@ export default function ScanPage() {
             </div>
           </div>
 
-          {/* Input manual — fallback kalau kamera/scanner ga bisa dipakai */}
+          {/* Input manual — fallback kalau kamera/scanner ga bisa dipakai,
+              atau QR peserta rusak/ga kebawa. Cari berdasarkan EMAIL atau
+              NOMOR HP peserta, otomatis kedeteksi dari yang diketik. */}
           <div className="mt-4 border-2 border-black bg-white">
             <button
               type="button"
@@ -358,27 +386,38 @@ export default function ScanPage() {
                 "flex w-full items-center justify-between px-3 py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-black/[0.03]",
               )}
             >
-              Input Manual (ID Registrasi)
+              Input Manual (Email / No. HP)
               <span className="text-black/40">{manualOpen ? "▾" : "▸"}</span>
             </button>
             {manualOpen && (
               <form
                 onSubmit={handleManualSubmit}
-                className="flex gap-2 border-t-2 border-black p-3"
+                className="border-t-2 border-black p-3"
               >
-                <input
-                  type="text"
-                  value={manualValue}
-                  onChange={(e) => setManualValue(e.target.value)}
-                  placeholder="Tempel/ketik ID registrasi..."
-                  className="flex-1 border-2 border-black bg-white px-2.5 py-1.5 text-xs outline-none focus:bg-[#FFF7DA]"
-                />
-                <button
-                  type="submit"
-                  className="shrink-0 border-2 border-black bg-[#FFD400] px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest hover:-translate-y-0.5"
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={manualValue}
+                    onChange={(e) => setManualValue(e.target.value)}
+                    placeholder="Email atau nomor HP peserta..."
+                    autoComplete="off"
+                    className="flex-1 border-2 border-black bg-white px-2.5 py-1.5 text-xs outline-none focus:bg-[#FFF7DA]"
+                  />
+                  <button
+                    type="submit"
+                    className="shrink-0 border-2 border-black bg-[#FFD400] px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest hover:-translate-y-0.5"
+                  >
+                    Cari
+                  </button>
+                </div>
+                <p
+                  className={cn(
+                    spaceMono.className,
+                    "mt-2 text-[9px] uppercase tracking-widest text-black/40",
+                  )}
                 >
-                  Cari
-                </button>
+                  cth: nama@email.com atau 0812xxxxxxx
+                </p>
               </form>
             )}
           </div>
