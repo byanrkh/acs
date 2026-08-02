@@ -9,10 +9,12 @@ const COLLAPSE_KEY = "acs-admin-sidebar-collapsed";
 export default function DashboardShell({
   userEmail,
   initialParticipantCount,
+  initialPendingTransferCount,
   children,
 }: {
   userEmail: string;
   initialParticipantCount: number;
+  initialPendingTransferCount: number;
   children: React.ReactNode;
 }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -39,6 +41,7 @@ export default function DashboardShell({
       <Sidebar
         userEmail={userEmail}
         initialParticipantCount={initialParticipantCount}
+        initialPendingTransferCount={initialPendingTransferCount}
         collapsed={collapsed}
         onToggleCollapsed={toggleCollapsed}
       />

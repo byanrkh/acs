@@ -18,10 +18,18 @@ export default async function DashboardLayout({
     .from("registrations")
     .select("id", { count: "exact", head: true });
 
+  // Sama halnya buat badge "menunggu verifikasi transfer" di item nav
+  // Verifikasi Transfer — query kedua, tetap head:true, tetap ringan.
+  const { count: pendingTransferCount } = await supabaseAdmin
+    .from("registrations")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "waiting_verification");
+
   return (
     <DashboardShell
       userEmail={user.email ?? ""}
       initialParticipantCount={count ?? 0}
+      initialPendingTransferCount={pendingTransferCount ?? 0}
     >
       {children}
     </DashboardShell>

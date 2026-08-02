@@ -5,12 +5,20 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ComponentType } from "react";
-import Marquee from "react-fast-marquee";
 import LogoutButton from "./LogoutButton";
 import { SpecialGhotic, spaceMono } from "@/libs/Font";
 import { createSupabaseBrowserClient } from "@/libs/supabase/client";
 
 type IconProps = { className?: string };
+
+// Easing dipakai konsisten di semua transisi collapse biar berasa satu "gerakan",
+// bukan potongan-potongan animasi yang beda timing.
+const EASE = "ease-[cubic-bezier(0.16,1,0.3,1)]";
+const DUR = "duration-300";
+
+// Href item nav yang butuh badge live jumlah "menunggu verifikasi". Kalau
+// suatu saat ada item lain yang butuh badge serupa, tinggal tambah key di sini.
+const PENDING_BADGE_HREF = "/dashboard/transfer";
 
 function IconUsers({ className }: IconProps) {
   return (
@@ -119,6 +127,96 @@ function IconChevronDouble({ className }: IconProps) {
   );
 }
 
+// Badge lonceng notifikasi kecil di pojok ikon — nempel di ikon "Verifikasi
+// Transfer" kalau ada pendaftar yang lagi nunggu verifikasi bukti transfer.
+// Sengaja nempel di ikon (bukan di label), jadi tetap kelihatan walau
+// sidebar lagi di-collapse.
+function NavBadge({ count }: { count: number }) {
+  if (count <= 0) return null;
+  return (
+    <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-black bg-[#D91E36] px-1">
+      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#D91E36] opacity-60" />
+      <span
+        className={cn(
+          spaceMono.className,
+          "relative text-[9px] font-bold leading-none text-white",
+        )}
+      >
+        {count > 99 ? "99+" : count}
+      </span>
+    </span>
+  );
+}
+
+// Wrapper generik buat "collapse" horizontal yang mulus: konten TETAP di-mount
+// (ga di-unmount kayak sebelumnya), cuma max-width & opacity-nya yang dianimasikan.
+// Ini yang bikin transisi collapse ga lagi kaku/pop begitu aja.
+function CollapseInline({
+  collapsed,
+  className,
+  maxWidth = "12rem",
+  gapLeft,
+  children,
+}: {
+  collapsed: boolean;
+  className?: string;
+  maxWidth?: string;
+  // Margin-kiri dipisah dari `className` dan dipasang lewat inline style,
+  // BUKAN sebagai kelas Tailwind. Ini disengaja: cn() di project ini pakai
+  // tailwind-merge, jadi kalau margin ikut dioper lewat `className`,
+  // tailwind-merge akan selalu menang-mengangkan kelas yang dioper dari
+  // pemanggil di atas kelas "ml-0" bawaan komponen ini — margin-nya jadi
+  // "hantu" yang tetap kepake walau lagi collapsed (lebar 0), dan itu yang
+  // bikin ikon di sidebar collapsed kelihatan ga presisi di tengah.
+  gapLeft?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className={cn(
+        "overflow-hidden whitespace-nowrap transition-[max-width,opacity,margin-left] ease-[cubic-bezier(0.16,1,0.3,1)]",
+        DUR,
+        collapsed ? "opacity-0" : "opacity-100",
+        className,
+      )}
+      style={{
+        maxWidth: collapsed ? "0px" : maxWidth,
+        marginLeft: collapsed ? "0px" : (gapLeft ?? "0px"),
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+// Wrapper buat "collapse" vertikal (blok yang seharusnya hilang total & bikin
+// elemen di bawahnya naik) pakai trik grid-template-rows 0fr -> 1fr, jauh lebih
+// mulus dibanding conditional mount/unmount karena height-nya nyata dianimasikan.
+function CollapseBlock({
+  collapsed,
+  className,
+  children,
+}: {
+  collapsed: boolean;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className={cn(
+        "grid transition-[grid-template-rows,margin-bottom,opacity] ease-[cubic-bezier(0.16,1,0.3,1)]",
+        DUR,
+        collapsed
+          ? "mb-0 grid-rows-[0fr] opacity-0"
+          : "mb-3 grid-rows-[1fr] opacity-100",
+        className,
+      )}
+    >
+      <div className="overflow-hidden">{children}</div>
+    </div>
+  );
+}
+
 // Baris toggle collapse/expand — sengaja jadi bagian dari alur sidebar (bukan
 // floating di tepi), biar ga pernah nabrak/nutupin item nav lain pas collapsed.
 function CollapseToggle({
@@ -134,17 +232,20 @@ function CollapseToggle({
       onClick={onToggle}
       aria-label={collapsed ? "Perluas sidebar" : "Ciutkan sidebar"}
       className={cn(
-        "group flex w-full items-center gap-2 border-b-4 border-black bg-white px-4 py-2.5 transition-colors hover:bg-[#FFD400]",
-        collapsed && "justify-center px-0",
+        "group flex w-full items-center border-b-4 border-black bg-white transition-[padding] hover:bg-[#FFD400]",
+        DUR,
+        EASE,
+        collapsed ? "justify-center px-0 py-2.5" : "gap-2 px-4 py-2.5",
       )}
     >
       <IconChevronDouble
         className={cn(
-          "h-3.5 w-3.5 shrink-0 transition-transform duration-300",
+          "h-3.5 w-3.5 shrink-0 transition-transform",
+          DUR,
           collapsed && "rotate-180",
         )}
       />
-      {!collapsed && (
+      <CollapseInline collapsed={collapsed} maxWidth="10rem">
         <span
           className={cn(
             spaceMono.className,
@@ -153,7 +254,7 @@ function CollapseToggle({
         >
           Minimize Sidebar
         </span>
-      )}
+      </CollapseInline>
     </button>
   );
 }
@@ -240,11 +341,13 @@ function useDaysToRace() {
 export default function Sidebar({
   userEmail,
   initialParticipantCount,
+  initialPendingTransferCount,
   collapsed,
   onToggleCollapsed,
 }: {
   userEmail: string;
   initialParticipantCount: number;
+  initialPendingTransferCount: number;
   collapsed: boolean;
   onToggleCollapsed: () => void;
 }) {
@@ -252,6 +355,9 @@ export default function Sidebar({
   const [open, setOpen] = useState(false);
   const [participantCount, setParticipantCount] = useState(
     initialParticipantCount,
+  );
+  const [pendingTransferCount, setPendingTransferCount] = useState(
+    initialPendingTransferCount,
   );
   const daysToRace = useDaysToRace();
 
@@ -300,6 +406,43 @@ export default function Sidebar({
     };
   }, []);
 
+  // Badge "menunggu verifikasi" di item nav Transfer — beda dari counter
+  // peserta di atas, di sini kita butuh REFETCH count-nya (bukan cuma
+  // increment/decrement), karena perubahan yang relevan adalah pergantian
+  // STATUS baris yang sudah ada (pending_payment → waiting_verification saat
+  // peserta upload bukti, lalu waiting_verification → confirmed saat admin
+  // approve) — bukan cuma insert/delete baris baru. Query count-nya sendiri
+  // ringan (head:true, cuma hitung, ga narik data).
+  useEffect(() => {
+    const supabase = createSupabaseBrowserClient();
+
+    async function refetchPendingTransferCount() {
+      const { count } = await supabase
+        .from("registrations")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "waiting_verification");
+
+      if (typeof count === "number") {
+        setPendingTransferCount(count);
+      }
+    }
+
+    const channel = supabase
+      .channel("sidebar-pending-transfer-count")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "registrations" },
+        () => {
+          refetchPendingTransferCount();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   function isActive(href: string) {
     if (href === "/dashboard") return pathname === "/dashboard";
     return pathname === href || pathname.startsWith(`${href}/`);
@@ -331,7 +474,7 @@ export default function Sidebar({
           onClick={() => setOpen(true)}
           aria-label="Buka menu admin"
           aria-expanded={open}
-          className="flex h-11 w-11 items-center justify-center border-4 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-transform active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
+          className="relative flex h-11 w-11 items-center justify-center border-4 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-transform active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
         >
           <svg
             width="20"
@@ -347,13 +490,17 @@ export default function Sidebar({
               strokeLinecap="round"
             />
           </svg>
+          <NavBadge count={pendingTransferCount} />
         </button>
       </header>
 
       {/* Sidebar tetap (fixed) buat layar lg ke atas, bisa di-collapse */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-30 hidden flex-col border-r-4 border-black bg-[#FDF6E9] transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] lg:flex",
+          "fixed inset-y-0 left-0 z-30 hidden flex-col border-r-4 border-black bg-[#FDF6E9] transition-[width]",
+          DUR,
+          EASE,
+          "lg:flex",
           collapsed ? "w-20" : "w-72",
         )}
       >
@@ -361,6 +508,7 @@ export default function Sidebar({
           isActive={isActive}
           userEmail={userEmail}
           participantCount={participantCount}
+          pendingTransferCount={pendingTransferCount}
           daysToRace={daysToRace}
           onNavigate={() => {}}
           collapsed={collapsed}
@@ -422,6 +570,7 @@ export default function Sidebar({
           isActive={isActive}
           userEmail={userEmail}
           participantCount={participantCount}
+          pendingTransferCount={pendingTransferCount}
           daysToRace={daysToRace}
           onNavigate={() => setOpen(false)}
           collapsed={false}
@@ -457,6 +606,7 @@ function SidebarContent({
   isActive,
   userEmail,
   participantCount,
+  pendingTransferCount,
   daysToRace,
   onNavigate,
   collapsed,
@@ -465,6 +615,7 @@ function SidebarContent({
   isActive: (href: string) => boolean;
   userEmail: string;
   participantCount: number;
+  pendingTransferCount: number;
   daysToRace: number | null;
   onNavigate: () => void;
   collapsed: boolean;
@@ -477,45 +628,77 @@ function SidebarContent({
       {/* Header / brand strip */}
       <div
         className={cn(
-          "relative hidden overflow-hidden border-b-4 border-black bg-[#FFF7DA] px-5 py-5 lg:flex lg:flex-col lg:gap-3",
-          collapsed && "items-center px-3",
+          "relative hidden overflow-hidden border-b-4 border-black bg-[#FFF7DA] transition-[padding]",
+          DUR,
+          EASE,
+          "lg:flex lg:flex-col lg:gap-3",
+          collapsed ? "items-center px-3 py-5" : "px-5 py-5",
         )}
       >
         <DotPattern />
         <div className="relative flex items-center gap-3">
           <Link
             href="/"
-            className="relative shrink-0 border-2 border-black bg-white p-1 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+            className="relative shrink-0 border-2 border-black bg-white p-1 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-transform duration-300"
           >
             <Image
               src={LOGO_URL}
               alt="Logo ACS"
-              width={collapsed ? 28 : 34}
-              height={collapsed ? 28 : 34}
+              width={34}
+              height={34}
               priority
+              className={cn(
+                "transition-[width,height] duration-300",
+                collapsed && "h-7 w-7",
+              )}
             />
           </Link>
-          {!collapsed && (
-            <div className="min-w-0">
-              <span
-                className={cn(
-                  SpecialGhotic.className,
-                  "block text-base uppercase leading-none tracking-tight",
-                )}
-              >
-                ACS 2026
-              </span>
-              <span
-                className={cn(
-                  spaceMono.className,
-                  "mt-1 block text-[9px] uppercase tracking-widest text-black/50",
-                )}
-              >
-                Panel Panitia
-              </span>
-            </div>
-          )}
+          <CollapseInline
+            collapsed={collapsed}
+            maxWidth="10rem"
+            className="min-w-0"
+          >
+            <span
+              className={cn(
+                SpecialGhotic.className,
+                "block text-base uppercase leading-none tracking-tight",
+              )}
+            >
+              ACS 2026
+            </span>
+            <span
+              className={cn(
+                spaceMono.className,
+                "mt-1 block text-[9px] uppercase tracking-widest text-black/50",
+              )}
+            >
+              Panel Panitia
+            </span>
+          </CollapseInline>
         </div>
+
+        {/* Badge H-hari, dekat lomba — muncul di kedua state (bentuknya beda) */}
+        {daysToRace !== null && (
+          <div
+            className={cn(
+              "relative border-2 border-black bg-[#FF5A1F] text-center text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all",
+              DUR,
+              EASE,
+              collapsed ? "mt-1 px-1.5 py-1" : "self-start px-2.5 py-1",
+            )}
+          >
+            <span
+              className={cn(
+                spaceMono.className,
+                "block text-[9px] font-bold uppercase tracking-widest",
+              )}
+            >
+              {collapsed
+                ? `H-${daysToRace}`
+                : `H-${daysToRace} menuju race day`}
+            </span>
+          </div>
+        )}
       </div>
 
       {onToggleCollapsed && (
@@ -525,8 +708,10 @@ function SidebarContent({
       {/* Nav */}
       <nav
         className={cn(
-          "flex-1 space-y-2.5 overflow-y-auto px-4 py-5",
-          collapsed && "px-3",
+          "flex-1 space-y-2.5 overflow-y-auto py-5 transition-[padding]",
+          DUR,
+          EASE,
+          collapsed ? "px-3" : "px-4",
         )}
       >
         {navItems.map(
@@ -536,6 +721,8 @@ function SidebarContent({
           ) => {
             const active = isActive(href);
             const num = String(index + 1).padStart(2, "0");
+            const badgeCount =
+              href === PENDING_BADGE_HREF ? pendingTransferCount : 0;
 
             return (
               <Link
@@ -544,8 +731,10 @@ function SidebarContent({
                 onClick={onNavigate}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "group relative flex items-center gap-3 overflow-hidden border-2 px-3 py-2.5 text-sm font-bold uppercase tracking-wide transition-all duration-150",
-                  collapsed && "justify-center px-0",
+                  "group relative flex items-center border-2 py-2.5 text-sm font-bold uppercase tracking-wide transition-all",
+                  DUR,
+                  EASE,
+                  collapsed ? "justify-center px-0" : "px-3",
                   active
                     ? cn(
                         "border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]",
@@ -555,15 +744,38 @@ function SidebarContent({
                     : "border-black/10 text-black hover:-translate-y-0.5 hover:border-black hover:bg-white hover:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]",
                 )}
               >
-                {/* Notch "robek tiket" di pojok kiri item aktif */}
-                {active && (
-                  <span
-                    aria-hidden
-                    className="absolute -left-1.5 top-1/2 h-3 w-3 -translate-y-1/2 rotate-45 border-2 border-black bg-[#FDF6E9]"
-                  />
-                )}
+                {/* Notch "robek tiket" di pojok kiri item aktif — sekarang selalu
+                    ter-mount, cuma opacity-nya yang ditransisikan biar ga "kedip". */}
+                <span
+                  aria-hidden
+                  className={cn(
+                    "absolute -left-1.5 top-1/2 h-3 w-3 -translate-y-1/2 rotate-45 border-2 border-black bg-[#FDF6E9] transition-opacity duration-200",
+                    active ? "opacity-100" : "opacity-0",
+                  )}
+                />
 
-                {!collapsed && (
+                <span className="relative flex h-5 w-5 shrink-0 items-center justify-center">
+                  <Icon className="h-5 w-5 transition-transform duration-150 group-hover:scale-110" />
+                  {badgeCount > 0 ? (
+                    <NavBadge count={badgeCount} />
+                  ) : (
+                    !active && (
+                      <span
+                        className={cn(
+                          "absolute -right-1 -top-1 h-1.5 w-1.5 rounded-full border border-black opacity-0 transition-opacity group-hover:opacity-100",
+                          dot,
+                        )}
+                      />
+                    )
+                  )}
+                </span>
+
+                <CollapseInline
+                  collapsed={collapsed}
+                  maxWidth="12rem"
+                  gapLeft="0.75rem"
+                  className="flex items-center gap-2"
+                >
                   <span
                     className={cn(
                       spaceMono.className,
@@ -573,21 +785,8 @@ function SidebarContent({
                   >
                     {num}
                   </span>
-                )}
-
-                <span className="relative shrink-0">
-                  <Icon className="h-5 w-5 transition-transform duration-150 group-hover:scale-110" />
-                  {!active && (
-                    <span
-                      className={cn(
-                        "absolute -right-1 -top-1 h-1.5 w-1.5 rounded-full border border-black opacity-0 transition-opacity group-hover:opacity-100",
-                        dot,
-                      )}
-                    />
-                  )}
-                </span>
-
-                {!collapsed && <span className="truncate">{label}</span>}
+                  <span className="truncate">{label}</span>
+                </CollapseInline>
 
                 {/* Tooltip pas collapsed */}
                 {collapsed && (
@@ -600,7 +799,11 @@ function SidebarContent({
                     <span className="block font-bold uppercase tracking-widest text-[#FFD400]">
                       {label}
                     </span>
-                    <span className="block text-white/70">{shortLabel}</span>
+                    <span className="block text-white/70">
+                      {badgeCount > 0
+                        ? `${badgeCount} menunggu verifikasi`
+                        : shortLabel}
+                    </span>
                   </span>
                 )}
               </Link>
@@ -611,10 +814,15 @@ function SidebarContent({
 
       {/* Footer */}
       <div
-        className={cn("border-t-4 border-black px-4 py-4", collapsed && "px-3")}
+        className={cn(
+          "border-t-4 border-black transition-[padding]",
+          DUR,
+          EASE,
+          collapsed ? "px-3 py-4" : "px-4 py-4",
+        )}
       >
-        {!collapsed && (
-          <div className="mb-3 flex items-center justify-between border-2 border-black bg-white px-3 py-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+        <CollapseBlock collapsed={collapsed}>
+          <div className="flex items-center justify-between border-2 border-black bg-white px-3 py-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
             <span
               className={cn(
                 spaceMono.className,
@@ -630,13 +838,15 @@ function SidebarContent({
               </span>
             </span>
           </div>
-        )}
+        </CollapseBlock>
 
         {/* Kartu identitas admin, gaya "ID badge" */}
         <div
           className={cn(
-            "relative flex items-center gap-2.5 border-2 border-black bg-white px-2.5 py-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]",
-            collapsed && "flex-col gap-2 px-1.5 py-2.5",
+            "relative flex items-center border-2 border-black bg-white px-2.5 py-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all",
+            DUR,
+            EASE,
+            collapsed ? "flex-col gap-2 px-1.5 py-2.5" : "gap-2.5",
           )}
         >
           <span
@@ -645,7 +855,7 @@ function SidebarContent({
           />
           <div
             className={cn(
-              "flex h-9 w-9 shrink-0 items-center justify-center border-2 border-black bg-[#FFD400] -rotate-3",
+              "flex h-9 w-9 shrink-0 -rotate-3 items-center justify-center border-2 border-black bg-[#FFD400]",
               spaceMono.className,
               "text-[10px] font-bold",
             )}
@@ -653,30 +863,39 @@ function SidebarContent({
           >
             {initials}
           </div>
-          {!collapsed && (
-            <div className="min-w-0 flex-1">
-              <p
-                className={cn(
-                  spaceMono.className,
-                  "truncate text-[10px] uppercase tracking-widest text-black",
-                )}
-                title={userEmail}
-              >
-                {userEmail}
-              </p>
-              <p
-                className={cn(
-                  spaceMono.className,
-                  "text-[8px] uppercase tracking-widest text-black/40",
-                )}
-              >
-                Admin · Panitia
-              </p>
-            </div>
-          )}
+          <CollapseInline
+            collapsed={collapsed}
+            maxWidth="12rem"
+            className="min-w-0 flex-1"
+          >
+            <p
+              className={cn(
+                spaceMono.className,
+                "truncate text-[10px] uppercase tracking-widest text-black",
+              )}
+              title={userEmail}
+            >
+              {userEmail}
+            </p>
+            <p
+              className={cn(
+                spaceMono.className,
+                "text-[8px] uppercase tracking-widest text-black/40",
+              )}
+            >
+              Admin · Panitia
+            </p>
+          </CollapseInline>
         </div>
 
-        <div className={cn("mt-3", collapsed && "flex justify-center")}>
+        <div
+          className={cn(
+            "mt-3 transition-all",
+            DUR,
+            EASE,
+            collapsed && "flex justify-center",
+          )}
+        >
           <LogoutButton compact={collapsed} />
         </div>
       </div>
