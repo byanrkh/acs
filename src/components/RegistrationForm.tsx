@@ -306,249 +306,254 @@ export default function RegistrationForm() {
         noValidate
         className="space-y-8 border-4 border-black bg-white p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] md:p-10"
       >
-        {/* STEP 1 — DATA PRIBADI */}
-        {step === 1 && (
-          <fieldset className="space-y-6">
-            <legend
-              className={cn(
-                SpecialGhotic.className,
-                "text-xl uppercase tracking-tight text-black md:text-2xl",
+        {/* Wrapper transisi per-step: cuma nambah kelas animasi (lihat
+            .step-in di globals.css), sama sekali ga ubah state/handler apa
+            pun di bawah ini. */}
+        <div key={step} className="step-in space-y-8">
+          {/* STEP 1 — DATA PRIBADI */}
+          {step === 1 && (
+            <fieldset className="space-y-6">
+              <legend
+                className={cn(
+                  SpecialGhotic.className,
+                  "text-xl uppercase tracking-tight text-black md:text-2xl",
+                )}
+              >
+                01 — Data pribadi
+              </legend>
+
+              <RadioTabs
+                legend="Kategori peserta"
+                name="kategori"
+                value={form.kategori}
+                onChange={handleKategoriChange}
+                error={errors.kategori}
+                options={[
+                  { value: "pelajar", label: "Pelajar" },
+                  { value: "umum", label: "Umum" },
+                ]}
+              />
+
+              {form.kategori === "pelajar" && (
+                <FormField
+                  label="Nomor induk siswa nasional (NISN)"
+                  name="nisn"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={10}
+                  placeholder="10 digit angka"
+                  value={form.nisn}
+                  onChange={handleInputChange}
+                  error={errors.nisn}
+                />
               )}
-            >
-              01 — Data pribadi
-            </legend>
 
-            <RadioTabs
-              legend="Kategori peserta"
-              name="kategori"
-              value={form.kategori}
-              onChange={handleKategoriChange}
-              error={errors.kategori}
-              options={[
-                { value: "pelajar", label: "Pelajar" },
-                { value: "umum", label: "Umum" },
-              ]}
-            />
+              {form.kategori === "umum" && (
+                <FormField
+                  label="4 digit terakhir NIK"
+                  name="nikTerakhir"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={4}
+                  placeholder="Contoh: 0421"
+                  value={form.nikTerakhir}
+                  onChange={handleInputChange}
+                  error={errors.nikTerakhir}
+                />
+              )}
 
-            {form.kategori === "pelajar" && (
               <FormField
-                label="Nomor induk siswa nasional (NISN)"
-                name="nisn"
+                label="Nama lengkap"
+                name="namaLengkap"
                 type="text"
-                inputMode="numeric"
-                maxLength={10}
-                placeholder="10 digit angka"
-                value={form.nisn}
+                placeholder="Sesuai KTP / kartu pelajar"
+                value={form.namaLengkap}
                 onChange={handleInputChange}
-                error={errors.nisn}
+                error={errors.namaLengkap}
               />
-            )}
 
-            {form.kategori === "umum" && (
-              <FormField
-                label="4 digit terakhir NIK"
-                name="nikTerakhir"
-                type="text"
-                inputMode="numeric"
-                maxLength={4}
-                placeholder="Contoh: 0421"
-                value={form.nikTerakhir}
-                onChange={handleInputChange}
-                error={errors.nikTerakhir}
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <FormField
+                  label="Email"
+                  name="email"
+                  type="email"
+                  placeholder="nama@email.com"
+                  value={form.email}
+                  onChange={handleInputChange}
+                  error={errors.email}
+                />
+                <FormField
+                  label="Nomor telepon / WhatsApp"
+                  name="telepon"
+                  type="tel"
+                  inputMode="tel"
+                  placeholder="08xx xxxx xxxx"
+                  value={form.telepon}
+                  onChange={handleInputChange}
+                  error={errors.telepon}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <FormField
+                  label="Tempat lahir"
+                  name="tempatLahir"
+                  type="text"
+                  placeholder="Kota tempat lahir"
+                  value={form.tempatLahir}
+                  onChange={handleInputChange}
+                  error={errors.tempatLahir}
+                />
+                <FormField
+                  label="Tanggal lahir"
+                  name="tanggalLahir"
+                  type="date"
+                  value={form.tanggalLahir}
+                  onChange={handleInputChange}
+                  error={errors.tanggalLahir}
+                />
+              </div>
+
+              <RadioTabs
+                legend="Jenis kelamin"
+                name="jenisKelamin"
+                value={form.jenisKelamin}
+                onChange={(value) =>
+                  updateField("jenisKelamin", value as JenisKelamin)
+                }
+                error={errors.jenisKelamin}
+                options={[
+                  { value: "L", label: "Laki-laki" },
+                  { value: "P", label: "Perempuan" },
+                ]}
               />
-            )}
+            </fieldset>
+          )}
 
-            <FormField
-              label="Nama lengkap"
-              name="namaLengkap"
-              type="text"
-              placeholder="Sesuai KTP / kartu pelajar"
-              value={form.namaLengkap}
-              onChange={handleInputChange}
-              error={errors.namaLengkap}
-            />
+          {/* STEP 2 — DATA MEDIS & KONTAK DARURAT */}
+          {step === 2 && (
+            <fieldset className="space-y-6">
+              <legend
+                className={cn(
+                  SpecialGhotic.className,
+                  "text-xl uppercase tracking-tight text-black md:text-2xl",
+                )}
+              >
+                02 — Data medis & kontak darurat
+              </legend>
 
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <SelectField
+                  label="Golongan darah"
+                  name="golonganDarah"
+                  value={form.golonganDarah}
+                  onChange={handleInputChange}
+                  error={errors.golonganDarah}
+                  options={golonganDarahOptions}
+                  placeholder="Pilih golongan darah"
+                />
+                <FormField
+                  label="Nama kontak darurat"
+                  name="kontakDaruratNama"
+                  type="text"
+                  placeholder="Nama"
+                  value={form.kontakDaruratNama}
+                  onChange={handleInputChange}
+                  error={errors.kontakDaruratNama}
+                />
+              </div>
+
               <FormField
-                label="Email"
-                name="email"
-                type="email"
-                placeholder="nama@email.com"
-                value={form.email}
-                onChange={handleInputChange}
-                error={errors.email}
-              />
-              <FormField
-                label="Nomor telepon / WhatsApp"
-                name="telepon"
+                label="Nomor telepon kontak darurat"
+                name="kontakDaruratTelepon"
                 type="tel"
                 inputMode="tel"
                 placeholder="08xx xxxx xxxx"
-                value={form.telepon}
+                value={form.kontakDaruratTelepon}
                 onChange={handleInputChange}
-                error={errors.telepon}
+                error={errors.kontakDaruratTelepon}
               />
-            </div>
 
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-              <FormField
-                label="Tempat lahir"
-                name="tempatLahir"
-                type="text"
-                placeholder="Kota tempat lahir"
-                value={form.tempatLahir}
+              <TextAreaField
+                label="Riwayat penyakit / alergi"
+                name="riwayatPenyakit"
+                placeholder="Kosongkan jika tidak ada"
+                value={form.riwayatPenyakit}
                 onChange={handleInputChange}
-                error={errors.tempatLahir}
+                optional
               />
-              <FormField
-                label="Tanggal lahir"
-                name="tanggalLahir"
-                type="date"
-                value={form.tanggalLahir}
-                onChange={handleInputChange}
-                error={errors.tanggalLahir}
-              />
-            </div>
+            </fieldset>
+          )}
 
-            <RadioTabs
-              legend="Jenis kelamin"
-              name="jenisKelamin"
-              value={form.jenisKelamin}
-              onChange={(value) =>
-                updateField("jenisKelamin", value as JenisKelamin)
-              }
-              error={errors.jenisKelamin}
-              options={[
-                { value: "L", label: "Laki-laki" },
-                { value: "P", label: "Perempuan" },
-              ]}
-            />
-          </fieldset>
-        )}
+          {/* STEP 3 — ATRIBUT LARI */}
+          {step === 3 && (
+            <fieldset className="space-y-6">
+              <legend
+                className={cn(
+                  SpecialGhotic.className,
+                  "text-xl uppercase tracking-tight text-black md:text-2xl",
+                )}
+              >
+                03 — Jersey & lainnya
+              </legend>
 
-        {/* STEP 2 — DATA MEDIS & KONTAK DARURAT */}
-        {step === 2 && (
-          <fieldset className="space-y-6">
-            <legend
-              className={cn(
-                SpecialGhotic.className,
-                "text-xl uppercase tracking-tight text-black md:text-2xl",
-              )}
-            >
-              02 — Data medis & kontak darurat
-            </legend>
-
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-              <SelectField
-                label="Golongan darah"
-                name="golonganDarah"
-                value={form.golonganDarah}
-                onChange={handleInputChange}
-                error={errors.golonganDarah}
-                options={golonganDarahOptions}
-                placeholder="Pilih golongan darah"
-              />
-              <FormField
-                label="Nama kontak darurat"
-                name="kontakDaruratNama"
-                type="text"
-                placeholder="Nama"
-                value={form.kontakDaruratNama}
-                onChange={handleInputChange}
-                error={errors.kontakDaruratNama}
-              />
-            </div>
-
-            <FormField
-              label="Nomor telepon kontak darurat"
-              name="kontakDaruratTelepon"
-              type="tel"
-              inputMode="tel"
-              placeholder="08xx xxxx xxxx"
-              value={form.kontakDaruratTelepon}
-              onChange={handleInputChange}
-              error={errors.kontakDaruratTelepon}
-            />
-
-            <TextAreaField
-              label="Riwayat penyakit / alergi"
-              name="riwayatPenyakit"
-              placeholder="Kosongkan jika tidak ada"
-              value={form.riwayatPenyakit}
-              onChange={handleInputChange}
-              optional
-            />
-          </fieldset>
-        )}
-
-        {/* STEP 3 — ATRIBUT LARI */}
-        {step === 3 && (
-          <fieldset className="space-y-6">
-            <legend
-              className={cn(
-                SpecialGhotic.className,
-                "text-xl uppercase tracking-tight text-black md:text-2xl",
-              )}
-            >
-              03 — Jersey & lainnya
-            </legend>
-
-            <div>
-              <div className="flex items-end justify-between gap-3">
-                <label
-                  htmlFor="ukuranJersey"
-                  className={cn(
-                    SpecialGhotic.className,
-                    "text-sm uppercase tracking-tight text-black",
-                  )}
-                >
-                  Ukuran jersey
-                </label>
-                <SizeChartModal />
-              </div>
-              <div className="mt-2">
-                <SelectField
-                  label="Ukuran jersey"
-                  hideLabel
-                  name="ukuranJersey"
-                  value={form.ukuranJersey}
-                  onChange={handleInputChange}
-                  error={errors.ukuranJersey}
-                  options={jerseyOptions}
-                  placeholder="Pilih ukuran"
-                />
-              </div>
-            </div>
-
-            <FormField
-              label="Nama di BIB"
-              name="namaBib"
-              type="text"
-              maxLength={12}
-              placeholder="Maks. 12 karakter"
-              value={form.namaBib}
-              onChange={handleInputChange}
-              error={errors.namaBib}
-              hint={`${form.namaBib.length}/12 karakter`}
-            />
-
-            {serverError &&
-              !errors.email &&
-              !errors.nisn &&
-              !errors.nikTerakhir && (
-                <div className="border-4 border-[#D91E36] bg-[#D91E36]/10 px-4 py-3">
-                  <p
+              <div>
+                <div className="flex items-end justify-between gap-3">
+                  <label
+                    htmlFor="ukuranJersey"
                     className={cn(
-                      spaceMono.className,
-                      "text-xs text-[#D91E36]",
+                      SpecialGhotic.className,
+                      "text-sm uppercase tracking-tight text-black",
                     )}
                   >
-                    {serverError}
-                  </p>
+                    Ukuran jersey
+                  </label>
+                  <SizeChartModal />
                 </div>
-              )}
-          </fieldset>
-        )}
+                <div className="mt-2">
+                  <SelectField
+                    label="Ukuran jersey"
+                    hideLabel
+                    name="ukuranJersey"
+                    value={form.ukuranJersey}
+                    onChange={handleInputChange}
+                    error={errors.ukuranJersey}
+                    options={jerseyOptions}
+                    placeholder="Pilih ukuran"
+                  />
+                </div>
+              </div>
+
+              <FormField
+                label="Nama di BIB"
+                name="namaBib"
+                type="text"
+                maxLength={12}
+                placeholder="Maks. 12 karakter"
+                value={form.namaBib}
+                onChange={handleInputChange}
+                error={errors.namaBib}
+                hint={`${form.namaBib.length}/12 karakter`}
+              />
+
+              {serverError &&
+                !errors.email &&
+                !errors.nisn &&
+                !errors.nikTerakhir && (
+                  <div className="border-4 border-[#D91E36] bg-[#D91E36]/10 px-4 py-3">
+                    <p
+                      className={cn(
+                        spaceMono.className,
+                        "text-xs text-[#D91E36]",
+                      )}
+                    >
+                      {serverError}
+                    </p>
+                  </div>
+                )}
+            </fieldset>
+          )}
+        </div>
 
         {/* NAVIGASI STEP */}
         <div className="flex items-center justify-between gap-4 border-t-4 border-black pt-6">
