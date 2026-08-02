@@ -51,10 +51,10 @@ export default function LogoutButton({
       onClick={handleLogout}
       disabled={isPending}
       className={cn(
-        "w-full border-2 border-black bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-widest hover:bg-black hover:text-white disabled:opacity-50",
+        "w-full border-2 border-black bg-red-500 px-3 py-1.5 text-xs font-bold uppercase tracking-widest hover:bg-black hover:text-white disabled:opacity-50",
       )}
     >
-      {isPending ? "..." : "Keluar"}
+      {isPending ? "..." : "Logout"}
     </button>
   );
 }

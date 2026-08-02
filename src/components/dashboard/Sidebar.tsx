@@ -708,7 +708,7 @@ function SidebarContent({
       {/* Nav */}
       <nav
         className={cn(
-          "flex-1 space-y-2.5 overflow-y-auto py-5 transition-[padding]",
+          "flex-1 space-y-2.5 py-5 transition-[padding]",
           DUR,
           EASE,
           collapsed ? "px-3" : "px-4",
@@ -780,7 +780,7 @@ function SidebarContent({
                     className={cn(
                       spaceMono.className,
                       "shrink-0 text-[9px] opacity-40 transition-opacity group-hover:opacity-70",
-                      active && "!opacity-70",
+                      active && "opacity-70!",
                     )}
                   >
                     {num}
