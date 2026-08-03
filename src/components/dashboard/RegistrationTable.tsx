@@ -20,6 +20,8 @@ export type Registration = {
   bib_number: string | null;
   race_pack_taken_at: string | null;
   created_at: string;
+  nisn: string | null;
+  nik_terakhir: string | null;
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -191,6 +193,11 @@ function DetailPanel({ r }: { r: Registration }) {
         </DetailField>
         <DetailField label="Kategori">
           <span className="capitalize">{r.kategori}</span>
+        </DetailField>
+        <DetailField label="Nik/Nisn">
+          <span className="capitalize">
+            {r.kategori === "pelajar" ? r.nisn : r.nik_terakhir}
+          </span>
         </DetailField>
       </DetailSection>
 
