@@ -1,4 +1,5 @@
 import "server-only";
+import { after } from "next/server";
 import { supabaseAdmin } from "@/libs/supabase/server";
 import { resend, EMAIL_FROM } from "@/libs/email/resend";
 import { buildSuccessEmailHtml } from "@/libs/email/successTemplate";
@@ -37,6 +38,12 @@ export type ApplyResult =
 // 2. RECONCILE (libs/actions/checkout.ts → reconcilePaymentStatus) — jalur
 //    AKTIF, kita yang nanya balik ke Midtrans "status transaksi ini apa
 //    sekarang?" pakai Core API. Ini penyelamat kalau webhook di atas gagal.
+//
+// PENTING soal kecepatan: fungsi ini WAJIB balik secepat mungkin --
+// dipanggil juga dari dalam webhook handler, dan Midtrans akan MENGANGGAP
+// GAGAL / RETRY notifikasi kalau responsnya lambat. Makanya generate QR +
+// kirim email (kerjaan paling berat & paling gak perlu ke-block) dipindah
+// ke after(), dijalankan SETELAH response dibalikin, bukan sebelum.
 export async function applyTransactionStatus({
   orderId,
   transactionStatus,
@@ -172,46 +179,53 @@ export async function applyTransactionStatus({
   // PROMO: potong kuota HANYA di titik transisi -> confirmed, dan cuma
   // kalau registrasi ini memang pakai promo. Best-effort, tidak pernah
   // menggagalkan konfirmasi pembayaran walau gagal (lihat komentar di
-  // incrementPromoUsageSafely).
+  // incrementPromoUsageSafely). Ini tetap disinkronkan (bukan after()) karena
+  // cuma 1 RPC call ringan ke Supabase, bukan penyumbang lag.
   if (isNewTransitionToConfirmed) {
     await incrementPromoUsageSafely(registration.promo_id as string | null);
   }
 
-  // Email Ke-2 (konfirmasi + nomor BIB) — sekali per registrasi.
+  // Email ke-2 (konfirmasi + nomor BIB) — sekali per registrasi. Generate QR
+  // + kirim email lewat Resend adalah bagian PALING LAMA di seluruh alur
+  // ini, dan hasilnya tidak memengaruhi apa yang client tunggu (status sudah
+  // pasti "confirmed" begitu baris di atas selesai) -- makanya dijalankan
+  // di after(), SETELAH response ke client/Midtrans sudah dikirim.
   if (newStatus === "confirmed" && !registration.success_email_sent_at) {
-    try {
-      const validationUrl = `${process.env.NEXT_PUBLIC_APP_URL}/admin/validasi/${registration.id}`;
-      const qrCodeBuffer = await generateQrCodeBuffer(validationUrl);
+    after(async () => {
+      try {
+        const validationUrl = `${process.env.NEXT_PUBLIC_APP_URL}/admin/validasi/${registration.id}`;
+        const qrCodeBuffer = await generateQrCodeBuffer(validationUrl);
 
-      await resend.emails.send({
-        from: EMAIL_FROM,
-        to: registration.email,
-        subject: `Pembayaran dikonfirmasi — Nomor BIB kamu: ${registration.bib_number}`,
-        html: buildSuccessEmailHtml({
-          namaLengkap: registration.nama_lengkap,
-          namaBib: registration.nama_bib,
-          bibNumber: registration.bib_number ?? "-",
-          kategori: registration.kategori,
-          ukuranJersey: registration.ukuran_jersey,
-        }),
-        attachments: [
-          {
-            filename: "qrcode.png",
-            content: qrCodeBuffer,
-            contentId: "qrcode_tiket", // ← field yang benar, bukan "cid"
-          },
-        ],
-      });
+        await resend.emails.send({
+          from: EMAIL_FROM,
+          to: registration.email,
+          subject: `Pembayaran dikonfirmasi — Nomor BIB kamu: ${registration.bib_number}`,
+          html: buildSuccessEmailHtml({
+            namaLengkap: registration.nama_lengkap,
+            namaBib: registration.nama_bib,
+            bibNumber: registration.bib_number ?? "-",
+            kategori: registration.kategori,
+            ukuranJersey: registration.ukuran_jersey,
+          }),
+          attachments: [
+            {
+              filename: "qrcode.png",
+              content: qrCodeBuffer,
+              contentId: "qrcode_tiket", // ← field yang benar, bukan "cid"
+            },
+          ],
+        });
 
-      await supabaseAdmin
-        .from("registrations")
-        .update({ success_email_sent_at: new Date().toISOString() })
-        .eq("id", registration.id);
+        await supabaseAdmin
+          .from("registrations")
+          .update({ success_email_sent_at: new Date().toISOString() })
+          .eq("id", registration.id);
 
-      console.log(`[applyTransactionStatus] email ke-2 + QR terkirim ke ${registration.email}`);
-    } catch (emailError) {
-      console.error("[applyTransactionStatus] gagal kirim email ke-2:", emailError);
-    }
+        console.log(`[applyTransactionStatus] email ke-2 + QR terkirim ke ${registration.email}`);
+      } catch (emailError) {
+        console.error("[applyTransactionStatus] gagal kirim email ke-2:", emailError);
+      }
+    });
   }
 
   await logPaymentEvent({
