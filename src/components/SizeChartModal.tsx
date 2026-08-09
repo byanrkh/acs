@@ -5,16 +5,16 @@ import { cn } from "@/libs/cn";
 import { SpecialGhotic, spaceMono } from "@/libs/Font";
 
 const sizeChart = [
-  { size: "XXS", chest: "46", length: "64" },
-  { size: "XS", chest: "48", length: "66" },
+  // { size: "XXS", chest: "46", length: "64" },
+  // { size: "XS", chest: "48", length: "66" },
   { size: "S", chest: "50", length: "68" },
   { size: "M", chest: "52", length: "70" },
   { size: "L", chest: "54", length: "72" },
   { size: "XL", chest: "57", length: "74" },
-  { size: "2XL", chest: "60", length: "76" },
-  { size: "3XL", chest: "63", length: "78" },
-  { size: "4XL", chest: "66", length: "80" },
-  { size: "5XL", chest: "69", length: "82" },
+  // { size: "2XL", chest: "60", length: "76" },
+  // { size: "3XL", chest: "63", length: "78" },
+  // { size: "4XL", chest: "66", length: "80" },
+  // { size: "5XL", chest: "69", length: "82" },
 ];
 
 export default function SizeChartModal() {
