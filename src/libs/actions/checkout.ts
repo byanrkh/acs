@@ -9,19 +9,37 @@ import { getRegistrationFee } from "@/libs/config/pricing";
 import { buildOrderId } from "@/libs/midtrans/orderId";
 import { applyTransactionStatus } from "@/libs/midtrans/applyStatusUpdate";
 import { logPaymentEvent } from "@/libs/actions/logs";
+import {
+  isPaymentMethodEnabled,
+  type PaymentMethodId,
+} from "@/libs/actions/paymentSettings";
 import type { MidtransChargeResponse } from "midtrans-client";
 
 const PAYMENT_DURATION_HOURS = 24;
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
-// Metode pembayaran yang kita tawarkan lewat Core API. Tinggal tambah entri
-// di sini (+ mapping di buildChargePayload) kalau mau nambah metode baru,
-// misal Mandiri Bill Payment atau GoPay.
-export type PaymentMethod = "bca" | "bni" | "bri" | "permata" | "qris";
+// Daftar metode pembayaran & metadatanya (label, grouping, on/off default)
+// sekarang tinggal di libs/actions/paymentSettings.ts biar satu sumber
+// kebenaran yang dipakai bareng sama halaman checkout & Settings admin.
+// Nambah metode baru? Tambah id-nya di sana, lalu tambah mapping charge-nya
+// di buildChargePayload + extractPaymentDisplay di bawah ini.
+export type PaymentMethod = PaymentMethodId;
 
 export type PaymentDisplay =
-  | { kind: "va"; bank: string; vaNumber: string; expiresAt: string }
-  | { kind: "qris"; qrImageUrl: string; expiresAt: string };
+  | {
+      kind: "va";
+      bank: string;
+      vaNumber: string;
+      billerCode?: string;
+      expiresAt: string;
+    }
+  | { kind: "qris"; qrImageUrl: string; expiresAt: string }
+  | {
+      kind: "gopay";
+      qrImageUrl: string;
+      deeplinkUrl?: string;
+      expiresAt: string;
+    };
 
 type CreatePaymentResult =
   | { ok: true; orderId: string; display: PaymentDisplay }
@@ -59,7 +77,6 @@ function buildChargePayload({
   };
 
   switch (method) {
-    case "bca":
     case "bni":
     case "bri":
       return {
@@ -72,20 +89,38 @@ function buildChargePayload({
         ...base,
         payment_type: "permata" as const,
       };
+    case "mandiri":
+      // Mandiri Bill Payment (echannel) — beda dari bank_transfer biasa,
+      // Midtrans balikin biller_code + bill_key, bukan satu nomor VA utuh.
+      return {
+        ...base,
+        payment_type: "echannel" as const,
+        echannel: {
+          bill_info1: "Pembayaran Pendaftaran",
+          bill_info2: "ACS 2026",
+        },
+      };
     case "qris":
       return {
         ...base,
         payment_type: "qris" as const,
         qris: { acquirer: "gopay" as const },
       };
+    case "gopay":
+      return {
+        ...base,
+        payment_type: "gopay" as const,
+        gopay: { enable_callback: false },
+      };
   }
 }
 
 // Ubah response mentah Core API jadi bentuk yang gampang dirender di UI.
 // Setiap payment_type balikin bentuk response yang beda-beda (va_numbers
-// array buat BCA/BNI/BRI, permata_va_number buat Permata, actions[] buat
-// QRIS) -- semua perbedaan itu diserap di sini, jadi komponen client cuma
-// perlu tahu 2 bentuk: "va" atau "qris".
+// array buat BNI/BRI, permata_va_number buat Permata, biller_code+bill_key
+// buat Mandiri, actions[] buat QRIS/GoPay) -- semua perbedaan itu diserap
+// di sini, jadi komponen client cuma perlu tahu 3 bentuk: "va", "qris",
+// atau "gopay".
 function extractPaymentDisplay(
   charge: MidtransChargeResponse,
 ): PaymentDisplay | null {
@@ -107,10 +142,40 @@ function extractPaymentDisplay(
     };
   }
 
+  // Mandiri Bill Payment (echannel) -- nggak ada "nomor VA" tunggal,
+  // yang dibutuhin user buat bayar adalah biller_code + bill_key.
+  if (charge.payment_type === "echannel" && charge.bill_key) {
+    return {
+      kind: "va",
+      bank: "mandiri",
+      vaNumber: charge.bill_key,
+      billerCode: charge.biller_code,
+      expiresAt,
+    };
+  }
+
   if (charge.payment_type === "qris") {
     const qrAction = charge.actions?.find((a) => a.name === "generate-qr-code");
     if (qrAction?.url) {
       return { kind: "qris", qrImageUrl: qrAction.url, expiresAt };
+    }
+  }
+
+  // GoPay -- selalu tampilkan QR (bisa di-scan pakai app lain yang support
+  // QRIS juga), deeplink dipakai kalau user buka checkout dari HP-nya
+  // sendiri langsung ke app GoPay.
+  if (charge.payment_type === "gopay") {
+    const qrAction = charge.actions?.find((a) => a.name === "generate-qr-code");
+    const deeplinkAction = charge.actions?.find(
+      (a) => a.name === "deeplink-redirect",
+    );
+    if (qrAction?.url) {
+      return {
+        kind: "gopay",
+        qrImageUrl: qrAction.url,
+        deeplinkUrl: deeplinkAction?.url,
+        expiresAt,
+      };
     }
   }
 
@@ -138,6 +203,17 @@ export async function createPaymentTransaction(
   }
   if (registration.status === "cancelled") {
     return { ok: false, error: "Pendaftaran ini sudah dibatalkan." };
+  }
+
+  // Jaga-jaga server-side: metode yang lagi dinonaktifkan admin lewat
+  // Settings > Metode Bayar tetap ditolak di sini, walau tombolnya di UI
+  // checkout seharusnya sudah disembunyikan/di-disable duluan.
+  const methodEnabled = await isPaymentMethodEnabled(method);
+  if (!methodEnabled) {
+    return {
+      ok: false,
+      error: "Metode pembayaran ini sedang tidak tersedia. Silakan pilih metode lain.",
+    };
   }
 
   // PROMO: gross_amount yang dikirim ke Midtrans WAJIB pakai final_amount

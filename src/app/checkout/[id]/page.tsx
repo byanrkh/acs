@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Container from "@/components/Container";
 import { supabaseAdmin } from "@/libs/supabase/server";
+import { getEnabledPaymentMethods } from "@/libs/actions/paymentSettings";
 import CheckoutClient from "@/components/checkout/CheckoutClient";
 
 export default async function CheckoutPage({
@@ -10,13 +11,16 @@ export default async function CheckoutPage({
 }) {
   const { id } = await params;
 
-  const { data: registration } = await supabaseAdmin
-    .from("registrations")
-    .select(
-      "id, nama_lengkap, email, kategori, ukuran_jersey, status, midtrans_order_id, payment_expires_at, bib_number, discount_amount, final_amount, promos:promo_id ( code )",
-    )
-    .eq("id", id)
-    .single();
+  const [{ data: registration }, enabledPaymentMethods] = await Promise.all([
+    supabaseAdmin
+      .from("registrations")
+      .select(
+        "id, nama_lengkap, email, kategori, ukuran_jersey, status, midtrans_order_id, payment_expires_at, bib_number, discount_amount, final_amount, promos:promo_id ( code )",
+      )
+      .eq("id", id)
+      .single(),
+    getEnabledPaymentMethods(),
+  ]);
 
   if (!registration) {
     notFound();
@@ -36,6 +40,7 @@ export default async function CheckoutPage({
       <Container>
         <div className="mx-auto max-w-lg">
           <CheckoutClient
+            enabledPaymentMethods={enabledPaymentMethods}
             registration={{
               id: registration.id,
               nama_lengkap: registration.nama_lengkap,

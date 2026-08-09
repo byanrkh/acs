@@ -1,27 +1,27 @@
 "use client";
 
 import { useState } from "react";
-import { FaCheck, FaInfoCircle, FaRegCopy } from "react-icons/fa";
+import {
+  FaCheck,
+  FaExternalLinkAlt,
+  FaInfoCircle,
+  FaRegCopy,
+} from "react-icons/fa";
 import type { PaymentDisplay } from "@/libs/actions/checkout";
 import { spaceMono, SpecialGhotic } from "@/libs/Font";
 import { cn } from "@/libs/cn";
 
 const BANK_META: Record<string, { label: string; accent: string }> = {
-  bca: { label: "BCA", accent: "#0F4C9C" },
   bni: { label: "BNI", accent: "#F58220" },
   bri: { label: "BRI", accent: "#00529C" },
   permata: { label: "Permata", accent: "#1F4B33" },
+  mandiri: { label: "Mandiri", accent: "#003D79" },
 };
 
 const QRIS_ACCENT = "#D91E36";
+const GOPAY_ACCENT = "#00AA13";
 
 const VA_STEPS: Record<string, string[]> = {
-  bca: [
-    "Buka aplikasi m-BCA / BCA Mobile atau ATM BCA.",
-    "Pilih m-Transfer / Transfer → Virtual Account.",
-    "Masukkan nomor Virtual Account di atas.",
-    "Periksa nominal & nama, lalu konfirmasi pembayaran.",
-  ],
   bni: [
     "Buka aplikasi BNI Mobile Banking atau ATM BNI.",
     "Pilih Transfer → Virtual Account Billing.",
@@ -39,6 +39,12 @@ const VA_STEPS: Record<string, string[]> = {
     "Pilih Transfer → Virtual Account.",
     "Masukkan nomor Virtual Account di atas.",
     "Periksa nominal, lalu konfirmasi pembayaran.",
+  ],
+  mandiri: [
+    "Buka aplikasi Livin' by Mandiri atau ATM Mandiri.",
+    "Pilih Bayar → Multipayment.",
+    "Masukkan Kode Perusahaan (Biller Code) di atas.",
+    "Masukkan Kode Pembayaran (Bill Key), lalu konfirmasi pembayaran.",
   ],
 };
 
@@ -123,7 +129,9 @@ export default function PaymentDetail({
   const accent =
     display.kind === "va"
       ? (BANK_META[display.bank]?.accent ?? "#000")
-      : QRIS_ACCENT;
+      : display.kind === "gopay"
+        ? GOPAY_ACCENT
+        : QRIS_ACCENT;
   const bankLabel =
     display.kind === "va"
       ? (BANK_META[display.bank]?.label ?? display.bank.toUpperCase())
@@ -143,7 +151,9 @@ export default function PaymentDetail({
         >
           {display.kind === "va"
             ? `Virtual Account ${bankLabel}`
-            : "Bayar dengan QRIS"}
+            : display.kind === "gopay"
+              ? "Bayar dengan GoPay"
+              : "Bayar dengan QRIS"}
         </p>
         <p
           className={cn(
@@ -158,13 +168,44 @@ export default function PaymentDetail({
       <div className="p-5 sm:p-6">
         {display.kind === "va" ? (
           <div>
+            {display.bank === "mandiri" && display.billerCode && (
+              <div className="mb-4">
+                <p
+                  className={cn(
+                    spaceMono.className,
+                    "text-[10px] uppercase tracking-widest text-black/50",
+                  )}
+                >
+                  Kode Perusahaan (Biller Code)
+                </p>
+                <div className="mt-2 flex items-stretch border-4 border-black">
+                  <div className="flex flex-1 items-center overflow-x-auto px-4 py-3">
+                    <span
+                      className={cn(
+                        SpecialGhotic.className,
+                        "select-all whitespace-nowrap text-xl tracking-widest text-black sm:text-2xl",
+                      )}
+                    >
+                      {display.billerCode}
+                    </span>
+                  </div>
+                  <InlineCopyButton
+                    value={display.billerCode}
+                    accent={accent}
+                  />
+                </div>
+              </div>
+            )}
+
             <p
               className={cn(
                 spaceMono.className,
                 "text-[10px] uppercase tracking-widest text-black/50",
               )}
             >
-              Nomor Virtual Account
+              {display.bank === "mandiri"
+                ? "Kode Pembayaran (Bill Key)"
+                : "Nomor Virtual Account"}
             </p>
 
             <div className="mt-2 flex items-stretch border-4 border-black">
@@ -191,11 +232,13 @@ export default function PaymentDetail({
                 <FaInfoCircle size={11} /> Cara bayar
               </p>
               <ol className="space-y-1.5 pl-4 text-sm text-black/75">
-                {(VA_STEPS[display.bank] ?? VA_STEPS.bca).map((step, index) => (
-                  <li key={index} className="list-decimal">
-                    {step}
-                  </li>
-                ))}
+                {(VA_STEPS[display.bank] ?? VA_STEPS.permata).map(
+                  (step, index) => (
+                    <li key={index} className="list-decimal">
+                      {step}
+                    </li>
+                  ),
+                )}
               </ol>
             </div>
           </div>
@@ -209,10 +252,26 @@ export default function PaymentDetail({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={display.qrImageUrl}
-                alt="Kode QRIS pembayaran"
+                alt={
+                  display.kind === "gopay"
+                    ? "Kode QR pembayaran GoPay"
+                    : "Kode QRIS pembayaran"
+                }
                 className="h-auto w-full"
               />
             </div>
+
+            {display.kind === "gopay" && display.deeplinkUrl && (
+              <a
+                href={display.deeplinkUrl}
+                className={cn(
+                  spaceMono.className,
+                  "mt-4 inline-flex items-center gap-2 border-2 border-black bg-[#00AA13] px-4 py-2 text-[11px] uppercase tracking-widest text-white shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5",
+                )}
+              >
+                Buka aplikasi GoPay <FaExternalLinkAlt size={10} />
+              </a>
+            )}
 
             <div className="mx-auto mt-5 max-w-sm space-y-2 text-left">
               <p
@@ -224,17 +283,39 @@ export default function PaymentDetail({
                 <FaInfoCircle size={11} /> Cara bayar
               </p>
               <ol className="space-y-1.5 pl-4 text-sm text-black/75">
-                <li className="list-decimal">
-                  Buka aplikasi GoPay, OVO, DANA, ShopeePay, atau m-banking yang
-                  mendukung QRIS.
-                </li>
-                <li className="list-decimal">Pilih menu Scan / Bayar QR.</li>
-                <li className="list-decimal">
-                  Arahkan kamera ke kode QR di atas.
-                </li>
-                <li className="list-decimal">
-                  Periksa nominal, lalu konfirmasi pembayaran.
-                </li>
+                {display.kind === "gopay" ? (
+                  <>
+                    <li className="list-decimal">
+                      Buka aplikasi Gojek, lalu pilih menu GoPay.
+                    </li>
+                    <li className="list-decimal">
+                      Tap tombol Scan/Bayar, atau tap tombol &quot;Buka aplikasi
+                      GoPay&quot; di atas kalau dibuka dari HP kamu.
+                    </li>
+                    <li className="list-decimal">
+                      Arahkan kamera ke kode QR di atas (jika scan manual).
+                    </li>
+                    <li className="list-decimal">
+                      Periksa nominal, lalu konfirmasi pembayaran.
+                    </li>
+                  </>
+                ) : (
+                  <>
+                    <li className="list-decimal">
+                      Buka aplikasi GoPay, OVO, DANA, ShopeePay, atau m-banking
+                      yang mendukung QRIS.
+                    </li>
+                    <li className="list-decimal">
+                      Pilih menu Scan / Bayar QR.
+                    </li>
+                    <li className="list-decimal">
+                      Arahkan kamera ke kode QR di atas.
+                    </li>
+                    <li className="list-decimal">
+                      Periksa nominal, lalu konfirmasi pembayaran.
+                    </li>
+                  </>
+                )}
               </ol>
             </div>
           </div>

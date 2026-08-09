@@ -17,6 +17,7 @@ import {
   type PaymentDisplay,
   type PaymentMethod,
 } from "@/libs/actions/checkout";
+import type { PaymentMethodId } from "@/libs/actions/paymentSettings";
 import { getRegistrationFee } from "@/libs/config/pricing";
 import { SpecialGhotic, spaceMono } from "@/libs/Font";
 import { cn } from "@/libs/cn";
@@ -94,8 +95,16 @@ const POLL_INTERVAL_MS = 5000;
 
 export default function CheckoutClient({
   registration,
+  enabledPaymentMethods,
 }: {
   registration: Registration;
+  /**
+   * Metode pembayaran yang lagi aktif menurut Dashboard > Settings > Metode
+   * Bayar, di-fetch di server component (app/checkout/[id]/page.tsx) supaya
+   * langsung tersedia begitu halaman ini render — nggak ada loading state
+   * tambahan buat data ini.
+   */
+  enabledPaymentMethods: PaymentMethodId[];
 }) {
   const [status, setStatus] = useState(registration.status);
   const [bibNumber, setBibNumber] = useState(registration.bib_number);
@@ -404,6 +413,7 @@ export default function CheckoutClient({
                   value={selectedMethod}
                   onChange={setSelectedMethod}
                   disabled={isPending}
+                  enabledMethods={enabledPaymentMethods}
                 />
 
                 <Button

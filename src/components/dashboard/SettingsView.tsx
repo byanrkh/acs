@@ -3,15 +3,18 @@
 import { useState } from "react";
 import AccountSettingsCard from "@/components/dashboard/AccountSettingsCard";
 import SystemInfoCard from "@/components/dashboard/SystemInfoCard";
+import PaymentMethodSettingsCard from "@/components/dashboard/PaymentMethodSettingsCard";
 import LogsPanel from "@/components/dashboard/LogsPanel";
 import type { AuditLog, PaymentLog } from "@/libs/actions/logs";
+import type { PaymentMethodAdminRow } from "@/libs/actions/paymentSettings";
 import { spaceMono, SpecialGhotic } from "@/libs/Font";
 import { cn } from "@/libs/cn";
 
-type Tab = "akun" | "sistem" | "aktivitas";
+type Tab = "akun" | "pembayaran" | "sistem" | "aktivitas";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "akun", label: "Akun" },
+  { id: "pembayaran", label: "Metode Bayar" },
   { id: "sistem", label: "Info Sistem" },
   { id: "aktivitas", label: "Log Aktivitas" },
 ];
@@ -21,6 +24,7 @@ export default function SettingsView({
   fees,
   contact,
   bankTransfer,
+  paymentMethodSettings,
   auditLogs,
   paymentLogs,
 }: {
@@ -37,6 +41,7 @@ export default function SettingsView({
     accountNumber: string;
     accountHolder: string;
   };
+  paymentMethodSettings: PaymentMethodAdminRow[];
   auditLogs: AuditLog[];
   paymentLogs: PaymentLog[];
 }) {
@@ -66,8 +71,16 @@ export default function SettingsView({
       <div className="mt-6">
         {tab === "akun" && <AccountSettingsCard userEmail={userEmail} />}
 
+        {tab === "pembayaran" && (
+          <PaymentMethodSettingsCard initialRows={paymentMethodSettings} />
+        )}
+
         {tab === "sistem" && (
-          <SystemInfoCard fees={fees} contact={contact} bankTransfer={bankTransfer} />
+          <SystemInfoCard
+            fees={fees}
+            contact={contact}
+            bankTransfer={bankTransfer}
+          />
         )}
 
         {tab === "aktivitas" && (

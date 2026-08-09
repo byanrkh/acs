@@ -1,10 +1,11 @@
 declare module "midtrans-client" {
   // ============================================================
-  // CORE API — dipakai buat bikin transaksi custom (VA / QRIS)
-  // TANPA popup/redirect Snap. Kita yang bikin UI-nya sendiri.
+  // CORE API — dipakai buat bikin transaksi custom (VA / QRIS /
+  // GoPay / Mandiri Bill) TANPA popup/redirect Snap. UI-nya kita
+  // yang bikin sendiri (lihat CheckoutClient.tsx + PaymentDetail.tsx).
   // ============================================================
 
-  export type MidtransBankTransferBank = "bca" | "bni" | "bri";
+  export type MidtransBankTransferBank = "bni" | "bri";
 
   export interface MidtransVANumber {
     bank: string;
@@ -30,20 +31,24 @@ declare module "midtrans-client" {
     expiry_time?: string;
     currency?: string;
 
-    // bank_transfer (BCA / BNI / BRI)
+    // bank_transfer (BNI / BRI)
     va_numbers?: MidtransVANumber[];
 
     // permata
     permata_va_number?: string;
 
-    // qris
+    // echannel (Mandiri Bill Payment)
+    biller_code?: string;
+    bill_key?: string;
+
+    // qris & gopay
     actions?: MidtransAction[];
     qr_string?: string;
     acquirer?: string;
   }
 
   export interface MidtransChargeParams {
-    payment_type: "bank_transfer" | "permata" | "qris";
+    payment_type: "bank_transfer" | "permata" | "echannel" | "qris" | "gopay";
     transaction_details: {
       order_id: string;
       gross_amount: number;
@@ -60,8 +65,16 @@ declare module "midtrans-client" {
     bank_transfer?: {
       bank: MidtransBankTransferBank;
     };
+    echannel?: {
+      bill_info1: string;
+      bill_info2: string;
+    };
     qris?: {
       acquirer?: "gopay" | "airpay shopee";
+    };
+    gopay?: {
+      enable_callback?: boolean;
+      callback_url?: string;
     };
   }
 
