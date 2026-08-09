@@ -1,5 +1,6 @@
 "use client";
 
+import Script from "next/script";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { FaClock, FaSpinner } from "react-icons/fa";
 import Button from "@/components/Button";
@@ -8,19 +9,42 @@ import PaymentStepper, {
   type PaymentStep,
 } from "@/components/checkout/PaymentStepper";
 import PriceTicket, { type PriceRow } from "@/components/checkout/PriceTicket";
-import PaymentMethodPicker from "@/components/checkout/PaymentMethodPicker";
-import PaymentDetail from "@/components/checkout/PaymentDetail";
 import {
   checkAndExpireIfPastDeadline,
   createPaymentTransaction,
   reconcilePaymentStatus,
-  type PaymentDisplay,
-  type PaymentMethod,
 } from "@/libs/actions/checkout";
-import type { PaymentMethodId } from "@/libs/actions/paymentSettings";
 import { getRegistrationFee } from "@/libs/config/pricing";
 import { SpecialGhotic, spaceMono } from "@/libs/Font";
 import { cn } from "@/libs/cn";
+
+// Snap.js nyuntik `window.snap` secara global setelah script-nya kelar
+// dimuat. Deklarasi minimal callback yang kita pakai — Snap sebenarnya
+// ngirim lebih banyak field di objek result, tapi kita cuma butuh momen
+// (success/pending/error/close)-nya, bukan detail isinya (status final
+// tetap kita ambil dari DB lewat reconcilePaymentStatus/webhook).
+declare global {
+  interface Window {
+    snap?: {
+      pay: (
+        token: string,
+        options?: {
+          onSuccess?: (result: unknown) => void;
+          onPending?: (result: unknown) => void;
+          onError?: (result: unknown) => void;
+          onClose?: () => void;
+        },
+      ) => void;
+    };
+  }
+}
+
+const SNAP_CLIENT_KEY = process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY ?? "";
+const SNAP_IS_PRODUCTION =
+  process.env.NEXT_PUBLIC_MIDTRANS_IS_PRODUCTION === "true";
+const SNAP_JS_SRC = SNAP_IS_PRODUCTION
+  ? "https://app.midtrans.com/snap/snap.js"
+  : "https://app.sandbox.midtrans.com/snap/snap.js";
 
 type Registration = {
   id: string;
@@ -88,36 +112,32 @@ function useCountdown(target: string | null) {
 
 // Berapa kali polling otomatis jalan sebelum berhenti dan nyerahin ke
 // tombol "Cek status sekarang". 60x @ 5 detik = 5 menit -- cukup buat
-// nunggu VA/QRIS ke-settle di sandbox atau kasus normal di production,
-// tanpa nge-hammer server actions kalau user ninggalin tab kebuka lama.
+// nunggu VA/QRIS/GoPay ke-settle di sandbox atau kasus normal di
+// production, tanpa nge-hammer server actions kalau user ninggalin tab
+// kebuka lama.
 const MAX_POLL_ATTEMPTS = 60;
 const POLL_INTERVAL_MS = 5000;
 
 export default function CheckoutClient({
   registration,
-  enabledPaymentMethods,
+  hasPaymentMethod,
 }: {
   registration: Registration;
   /**
-   * Metode pembayaran yang lagi aktif menurut Dashboard > Settings > Metode
-   * Bayar, di-fetch di server component (app/checkout/[id]/page.tsx) supaya
-   * langsung tersedia begitu halaman ini render — nggak ada loading state
-   * tambahan buat data ini.
+   * Apakah ADA MINIMAL SATU metode pembayaran yang lagi aktif menurut
+   * Dashboard > Settings > Metode Bayar. UI pemilihan metode sendiri
+   * sepenuhnya di-render oleh popup Snap, jadi kita nggak perlu tahu
+   * daftar lengkapnya lagi di sini — cukup tahu boleh/tidaknya tombol
+   * "Bayar Sekarang" diklik.
    */
-  enabledPaymentMethods: PaymentMethodId[];
+  hasPaymentMethod: boolean;
 }) {
   const [status, setStatus] = useState(registration.status);
   const [bibNumber, setBibNumber] = useState(registration.bib_number);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [waitingConfirmation, setWaitingConfirmation] = useState(false);
   const [isPending, startTransition] = useTransition();
-
-  const [selectedMethod, setSelectedMethod] = useState<PaymentMethod | null>(
-    null,
-  );
-  const [paymentDisplay, setPaymentDisplay] = useState<PaymentDisplay | null>(
-    null,
-  );
+  const [snapReady, setSnapReady] = useState(false);
 
   const [promoCode, setPromoCode] = useState(registration.promo_code);
   const [discountAmount, setDiscountAmount] = useState(
@@ -136,11 +156,8 @@ export default function CheckoutClient({
 
   const canEditPromo = status === "pending_payment" || status === "expired";
 
-  // Kalau status berubah (misal jadi confirmed/expired dari polling atau
-  // reload), kode pembayaran lama (VA/QRIS) udah gak relevan lagi.
   useEffect(() => {
     if (status !== "pending_payment") {
-      setPaymentDisplay(null);
       setWaitingConfirmation(false);
     }
   }, [status]);
@@ -194,32 +211,47 @@ export default function CheckoutClient({
   }, [waitingConfirmation]);
 
   function handlePay() {
-    if (!selectedMethod) {
-      setErrorMessage("Pilih metode pembayaran dulu ya.");
+    if (!hasPaymentMethod) {
+      setErrorMessage(
+        "Belum ada metode pembayaran yang aktif saat ini. Hubungi panitia lewat halaman Kontak ya.",
+      );
+      return;
+    }
+
+    if (!snapReady || typeof window === "undefined" || !window.snap) {
+      setErrorMessage(
+        "Modul pembayaran belum siap dimuat, tunggu sebentar lalu coba lagi.",
+      );
       return;
     }
 
     setErrorMessage(null);
     startTransition(async () => {
-      const result = await createPaymentTransaction(
-        registration.id,
-        selectedMethod,
-      );
+      const result = await createPaymentTransaction(registration.id);
 
       if (!result.ok) {
         setErrorMessage(result.error);
         return;
       }
 
-      setPaymentDisplay(result.display);
-      setWaitingConfirmation(true);
+      // Popup Snap yang render pilihan GoPay/QRIS/VA/dll + status
+      // sukses/pending/gagal-nya sendiri. Kita cuma perlu tahu MOMENnya
+      // buat mulai polling status ke DB (status final tetap sumber
+      // kebenarannya dari webhook + reconcilePaymentStatus, bukan dari
+      // callback ini, supaya konsisten dengan halaman kalau di-reload).
+      window.snap!.pay(result.snap.token, {
+        onSuccess: () => setWaitingConfirmation(true),
+        onPending: () => setWaitingConfirmation(true),
+        onError: () => {
+          setErrorMessage("Pembayaran gagal diproses. Coba lagi ya.");
+        },
+        onClose: () => {
+          setErrorMessage(
+            'Kamu menutup jendela pembayaran sebelum selesai. Klik "Bayar Sekarang" lagi kalau mau lanjut.',
+          );
+        },
+      });
     });
-  }
-
-  function handleChangeMethod() {
-    setPaymentDisplay(null);
-    setWaitingConfirmation(false);
-    setErrorMessage(null);
   }
 
   function handleManualRecheck() {
@@ -249,6 +281,15 @@ export default function CheckoutClient({
 
   return (
     <div>
+      {SNAP_CLIENT_KEY && (
+        <Script
+          src={SNAP_JS_SRC}
+          data-client-key={SNAP_CLIENT_KEY}
+          strategy="afterInteractive"
+          onLoad={() => setSnapReady(true)}
+        />
+      )}
+
       <span className="inline-block -rotate-2 border-4 border-black bg-[#FFD400] px-4 py-1.5 text-sm font-bold shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
         Checkout
       </span>
@@ -321,16 +362,11 @@ export default function CheckoutClient({
                   setPromoCode(result.code);
                   setDiscountAmount(result.discountAmount);
                   setFinalAmount(result.finalAmount);
-                  // Kode pembayaran (VA/QRIS) lama udah nyimpen gross_amount
-                  // sebelum promo diterapkan -> paksa bikin transaksi baru
-                  // saat "Bayar" berikutnya diklik supaya nominal ikut update.
-                  setPaymentDisplay(null);
                 }}
                 onRemoved={(result) => {
                   setPromoCode(null);
                   setDiscountAmount(0);
                   setFinalAmount(result.finalAmount);
-                  setPaymentDisplay(null);
                 }}
               />
             )}
@@ -387,6 +423,20 @@ export default function CheckoutClient({
               </div>
             )}
 
+            {!hasPaymentMethod && (
+              <div className="flex items-center gap-3 border-4 border-black bg-[#FFD400]/40 p-3">
+                <p
+                  className={cn(
+                    spaceMono.className,
+                    "text-[11px] text-black/70",
+                  )}
+                >
+                  Belum ada metode pembayaran yang aktif saat ini. Hubungi
+                  panitia lewat halaman Kontak ya.
+                </p>
+              </div>
+            )}
+
             {errorMessage && (
               <p
                 className={cn(
@@ -398,42 +448,57 @@ export default function CheckoutClient({
               </p>
             )}
 
-            {paymentDisplay ? (
-              <PaymentDetail
-                display={paymentDisplay}
-                onChangeMethod={handleChangeMethod}
-                changingMethod={isPending}
-                waitingConfirmation={waitingConfirmation}
-                onManualRecheck={handleManualRecheck}
-                checkingStatus={isPending}
-              />
-            ) : (
-              <div className="space-y-4">
-                <PaymentMethodPicker
-                  value={selectedMethod}
-                  onChange={setSelectedMethod}
-                  disabled={isPending}
-                  enabledMethods={enabledPaymentMethods}
-                />
-
-                <Button
-                  type="button"
-                  variant="primary"
-                  className="w-full justify-center gap-2"
-                  onClick={handlePay}
-                  disabled={isPending || !selectedMethod}
-                >
-                  {isPending && (
-                    <FaSpinner className="animate-spin" size={14} />
+            {waitingConfirmation ? (
+              <div className="border-4 border-black bg-white p-5 text-center shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
+                <p
+                  className={cn(
+                    spaceMono.className,
+                    "flex items-center justify-center gap-2 text-xs uppercase tracking-widest text-black/60",
                   )}
-                  {isPending
-                    ? "Menghubungi Midtrans..."
-                    : status === "expired"
-                      ? "Bayar ulang"
-                      : "Buat kode pembayaran"}
-                </Button>
+                >
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#FFD400] opacity-75" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-[#FFD400]" />
+                  </span>
+                  Menunggu konfirmasi pembayaran...
+                </p>
+                <button
+                  type="button"
+                  onClick={handleManualRecheck}
+                  disabled={isPending}
+                  className={cn(
+                    spaceMono.className,
+                    "mt-3 text-xs underline underline-offset-2 text-black/60 hover:text-black disabled:opacity-50",
+                  )}
+                >
+                  {isPending ? "Mengecek..." : "Cek status sekarang"}
+                </button>
               </div>
+            ) : (
+              <Button
+                type="button"
+                variant="primary"
+                className="w-full justify-center gap-2"
+                onClick={handlePay}
+                disabled={isPending || !hasPaymentMethod}
+              >
+                {isPending && <FaSpinner className="animate-spin" size={14} />}
+                {isPending
+                  ? "Menghubungi Midtrans..."
+                  : status === "expired"
+                    ? "Bayar ulang"
+                    : "Bayar Sekarang"}
+              </Button>
             )}
+
+            <p
+              className={cn(
+                spaceMono.className,
+                "flex items-center justify-center gap-1.5 text-center text-[9px] uppercase tracking-widest text-black/35",
+              )}
+            >
+              Transaksi diproses aman lewat Midtrans
+            </p>
           </>
         )}
       </div>

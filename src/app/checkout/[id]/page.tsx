@@ -40,7 +40,11 @@ export default async function CheckoutPage({
       <Container>
         <div className="mx-auto max-w-lg">
           <CheckoutClient
-            enabledPaymentMethods={enabledPaymentMethods}
+            // Snap yang render UI pilihan metode pembayaran, jadi client
+            // component di sini cuma perlu tahu APAKAH ada metode yang
+            // aktif sama sekali (buat nampilin warning kalau semua
+            // dimatikan admin), bukan daftar lengkapnya lagi.
+            hasPaymentMethod={enabledPaymentMethods.length > 0}
             registration={{
               id: registration.id,
               nama_lengkap: registration.nama_lengkap,

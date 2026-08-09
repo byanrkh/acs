@@ -2,6 +2,7 @@
 
 import { after } from "next/server";
 import { supabaseAdmin } from "@/libs/supabase/server";
+import { snap } from "@/libs/midtrans/server";
 import { coreApi } from "@/libs/midtrans/server";
 import { resend, EMAIL_FROM } from "@/libs/email/resend";
 import { buildInvoiceEmailHtml } from "@/libs/email/invoiceTemplate";
@@ -10,181 +11,43 @@ import { buildOrderId } from "@/libs/midtrans/orderId";
 import { applyTransactionStatus } from "@/libs/midtrans/applyStatusUpdate";
 import { logPaymentEvent } from "@/libs/actions/logs";
 import {
-  isPaymentMethodEnabled,
+  getEnabledPaymentMethods,
   type PaymentMethodId,
 } from "@/libs/actions/paymentSettings";
-import type { MidtransChargeResponse } from "midtrans-client";
+import type { MidtransSnapTransactionResponse } from "midtrans-client";
 
 const PAYMENT_DURATION_HOURS = 24;
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
-// Daftar metode pembayaran & metadatanya (label, grouping, on/off default)
-// sekarang tinggal di libs/actions/paymentSettings.ts biar satu sumber
-// kebenaran yang dipakai bareng sama halaman checkout & Settings admin.
-// Nambah metode baru? Tambah id-nya di sana, lalu tambah mapping charge-nya
-// di buildChargePayload + extractPaymentDisplay di bawah ini.
-export type PaymentMethod = PaymentMethodId;
+// Snap punya ID payment channel versinya sendiri (BEDA dari payment_type
+// Core API yang dulu dipakai) buat parameter `enabled_payments`. Peta ini
+// menyambungkan toggle admin (Dashboard > Settings > Metode Bayar, lihat
+// libs/actions/paymentSettings.ts) ke ID yang dikenali Snap, supaya popup
+// Snap hanya menampilkan metode yang lagi diaktifkan panitia.
+const SNAP_ENABLED_PAYMENT_MAP: Record<PaymentMethodId, string> = {
+  gopay: "gopay",
+  qris: "other_qris",
+  permata: "permata_va",
+  mandiri: "echannel",
+  bni: "bni_va",
+  bri: "bri_va",
+};
 
-export type PaymentDisplay =
-  | {
-      kind: "va";
-      bank: string;
-      vaNumber: string;
-      billerCode?: string;
-      expiresAt: string;
-    }
-  | { kind: "qris"; qrImageUrl: string; expiresAt: string }
-  | {
-      kind: "gopay";
-      qrImageUrl: string;
-      deeplinkUrl?: string;
-      expiresAt: string;
-    };
+export type PaymentSnapResult = {
+  token: string;
+  redirectUrl: string;
+};
 
 type CreatePaymentResult =
-  | { ok: true; orderId: string; display: PaymentDisplay }
+  | { ok: true; orderId: string; snap: PaymentSnapResult }
   | { ok: false; error: string };
 
-function buildChargePayload({
-  method,
-  orderId,
-  grossAmount,
-  namaLengkap,
-  email,
-  telepon,
-}: {
-  method: PaymentMethod;
-  orderId: string;
-  grossAmount: number;
-  namaLengkap: string;
-  email: string;
-  telepon?: string | null;
-}) {
-  const base = {
-    transaction_details: {
-      order_id: orderId,
-      gross_amount: grossAmount,
-    },
-    customer_details: {
-      first_name: namaLengkap,
-      email,
-      phone: telepon ?? undefined,
-    },
-    custom_expiry: {
-      expiry_duration: PAYMENT_DURATION_HOURS,
-      unit: "hour" as const,
-    },
-  };
-
-  switch (method) {
-    case "bni":
-    case "bri":
-      return {
-        ...base,
-        payment_type: "bank_transfer" as const,
-        bank_transfer: { bank: method },
-      };
-    case "permata":
-      return {
-        ...base,
-        payment_type: "permata" as const,
-      };
-    case "mandiri":
-      // Mandiri Bill Payment (echannel) — beda dari bank_transfer biasa,
-      // Midtrans balikin biller_code + bill_key, bukan satu nomor VA utuh.
-      return {
-        ...base,
-        payment_type: "echannel" as const,
-        echannel: {
-          bill_info1: "Pembayaran Pendaftaran",
-          bill_info2: "ACS 2026",
-        },
-      };
-    case "qris":
-      return {
-        ...base,
-        payment_type: "qris" as const,
-        qris: { acquirer: "gopay" as const },
-      };
-    case "gopay":
-      return {
-        ...base,
-        payment_type: "gopay" as const,
-        gopay: { enable_callback: false },
-      };
-  }
-}
-
-// Ubah response mentah Core API jadi bentuk yang gampang dirender di UI.
-// Setiap payment_type balikin bentuk response yang beda-beda (va_numbers
-// array buat BNI/BRI, permata_va_number buat Permata, biller_code+bill_key
-// buat Mandiri, actions[] buat QRIS/GoPay) -- semua perbedaan itu diserap
-// di sini, jadi komponen client cuma perlu tahu 3 bentuk: "va", "qris",
-// atau "gopay".
-function extractPaymentDisplay(
-  charge: MidtransChargeResponse,
-): PaymentDisplay | null {
-  const expiresAt = charge.expiry_time
-    ? new Date(charge.expiry_time.replace(" ", "T")).toISOString()
-    : new Date(Date.now() + PAYMENT_DURATION_HOURS * 60 * 60 * 1000).toISOString();
-
-  if (charge.payment_type === "bank_transfer" && charge.va_numbers?.length) {
-    const va = charge.va_numbers[0];
-    return { kind: "va", bank: va.bank, vaNumber: va.va_number, expiresAt };
-  }
-
-  if (charge.payment_type === "permata" && charge.permata_va_number) {
-    return {
-      kind: "va",
-      bank: "permata",
-      vaNumber: charge.permata_va_number,
-      expiresAt,
-    };
-  }
-
-  // Mandiri Bill Payment (echannel) -- nggak ada "nomor VA" tunggal,
-  // yang dibutuhin user buat bayar adalah biller_code + bill_key.
-  if (charge.payment_type === "echannel" && charge.bill_key) {
-    return {
-      kind: "va",
-      bank: "mandiri",
-      vaNumber: charge.bill_key,
-      billerCode: charge.biller_code,
-      expiresAt,
-    };
-  }
-
-  if (charge.payment_type === "qris") {
-    const qrAction = charge.actions?.find((a) => a.name === "generate-qr-code");
-    if (qrAction?.url) {
-      return { kind: "qris", qrImageUrl: qrAction.url, expiresAt };
-    }
-  }
-
-  // GoPay -- selalu tampilkan QR (bisa di-scan pakai app lain yang support
-  // QRIS juga), deeplink dipakai kalau user buka checkout dari HP-nya
-  // sendiri langsung ke app GoPay.
-  if (charge.payment_type === "gopay") {
-    const qrAction = charge.actions?.find((a) => a.name === "generate-qr-code");
-    const deeplinkAction = charge.actions?.find(
-      (a) => a.name === "deeplink-redirect",
-    );
-    if (qrAction?.url) {
-      return {
-        kind: "gopay",
-        qrImageUrl: qrAction.url,
-        deeplinkUrl: deeplinkAction?.url,
-        expiresAt,
-      };
-    }
-  }
-
-  return null;
-}
-
+// SATU-SATUNYA cara bikin transaksi sekarang: generate Snap token +
+// redirect_url. Tidak ada lagi parameter `method` di sini — pemilihan
+// GoPay/QRIS/VA/dll sekarang sepenuhnya ditangani di dalam popup Snap
+// (lihat CheckoutClient.tsx -> window.snap.pay(token, ...)).
 export async function createPaymentTransaction(
   registrationId: string,
-  method: PaymentMethod,
 ): Promise<CreatePaymentResult> {
   const { data: registration, error } = await supabaseAdmin
     .from("registrations")
@@ -205,16 +68,21 @@ export async function createPaymentTransaction(
     return { ok: false, error: "Pendaftaran ini sudah dibatalkan." };
   }
 
-  // Jaga-jaga server-side: metode yang lagi dinonaktifkan admin lewat
-  // Settings > Metode Bayar tetap ditolak di sini, walau tombolnya di UI
-  // checkout seharusnya sudah disembunyikan/di-disable duluan.
-  const methodEnabled = await isPaymentMethodEnabled(method);
-  if (!methodEnabled) {
+  // Jaga-jaga server-side: kalau semua metode lagi dinonaktifkan admin
+  // lewat Settings > Metode Bayar, jangan sampai bikin transaksi Snap
+  // dengan enabled_payments kosong (itu bikin popup Snap kosong tanpa
+  // metode apa pun) — tolak dari sini duluan dengan pesan yang jelas.
+  const enabledMethods = await getEnabledPaymentMethods();
+  if (enabledMethods.length === 0) {
     return {
       ok: false,
-      error: "Metode pembayaran ini sedang tidak tersedia. Silakan pilih metode lain.",
+      error:
+        "Belum ada metode pembayaran yang aktif saat ini. Hubungi panitia lewat halaman Kontak ya.",
     };
   }
+  const enabledPayments = enabledMethods.map(
+    (id) => SNAP_ENABLED_PAYMENT_MAP[id],
+  );
 
   // PROMO: gross_amount yang dikirim ke Midtrans WAJIB pakai final_amount
   // yang tersimpan di DB (sudah memperhitungkan promo kalau ada), BUKAN
@@ -227,41 +95,39 @@ export async function createPaymentTransaction(
     Date.now() + PAYMENT_DURATION_HOURS * 60 * 60 * 1000,
   ).toISOString();
 
-  // Nggak ada lagi halaman hosted Midtrans buat "finish redirect" karena kita
-  // gak pakai Snap. Link ini cuma dipakai di email (invoice/reminder) supaya
-  // user diarahkan balik ke halaman checkout kita sendiri.
+  // Dipakai sebagai callbacks.finish Snap (halaman yang dituju setelah
+  // pembayaran selesai/gagal/ditutup dari popup) DAN sebagai link di email
+  // invoice/reminder — dua-duanya ngarahin balik ke halaman checkout kita.
   const finishUrl = `${APP_URL}/checkout/${registration.id}`;
 
-  // ── SATU-SATUNYA network call yang WAJIB ditunggu sebelum user bisa
-  // lihat nomor VA / QRIS-nya. Ini murni waktu tempuh ke server Midtrans,
-  // biasanya <1-2 detik. Semua kerjaan LAIN (kirim email, tulis log) tidak
-  // boleh ikut nge-block response ini -- makanya dipindah ke after() di
-  // bawah, dijalankan SETELAH client sudah menerima jawaban.
-  let charge: MidtransChargeResponse;
+  // ── SATU-SATUNYA network call yang WAJIB ditunggu sebelum popup Snap
+  // bisa dibuka di frontend. Semua kerjaan LAIN (kirim email, tulis log)
+  // tidak boleh ikut nge-block response ini -- makanya dipindah ke after()
+  // di bawah, dijalankan SETELAH client sudah menerima token/redirect_url.
+  let snapTransaction: MidtransSnapTransactionResponse;
   try {
-    charge = await coreApi.charge(
-      buildChargePayload({
-        method,
-        orderId,
-        grossAmount,
-        namaLengkap: registration.nama_lengkap,
+    snapTransaction = await snap.createTransaction({
+      transaction_details: {
+        order_id: orderId,
+        gross_amount: grossAmount,
+      },
+      customer_details: {
+        first_name: registration.nama_lengkap,
         email: registration.email,
-        telepon: registration.telepon,
-      }),
-    );
+        phone: registration.telepon ?? undefined,
+      },
+      enabled_payments: enabledPayments,
+      expiry: {
+        unit: "hour",
+        duration: PAYMENT_DURATION_HOURS,
+      },
+      callbacks: {
+        finish: finishUrl,
+      },
+    });
   } catch (err) {
-    console.error("Gagal membuat Core API transaction:", err);
+    console.error("Gagal membuat Snap transaction:", err);
     return { ok: false, error: "Gagal menghubungi Midtrans, coba lagi." };
-  }
-
-  if (charge.transaction_status === "deny") {
-    return { ok: false, error: "Transaksi ditolak oleh Midtrans, coba metode lain." };
-  }
-
-  const display = extractPaymentDisplay(charge);
-  if (!display) {
-    console.error("[createPaymentTransaction] respons Midtrans tidak dikenali:", charge);
-    return { ok: false, error: "Format respons pembayaran tidak dikenali, coba lagi." };
   }
 
   const { error: updateError } = await supabaseAdmin
@@ -269,7 +135,7 @@ export async function createPaymentTransaction(
     .update({
       status: "pending_payment",
       midtrans_order_id: orderId,
-      midtrans_redirect_url: finishUrl,
+      midtrans_redirect_url: snapTransaction.redirect_url ?? finishUrl,
       payment_expires_at: paymentExpiresAt,
     })
     .eq("id", registrationId);
@@ -280,17 +146,17 @@ export async function createPaymentTransaction(
   }
 
   // PENTING: dua kerjaan di bawah ini (log audit + email invoice) TIDAK
-  // memengaruhi apa yang dilihat user (nomor VA/QRIS sudah fix dari respons
-  // charge() di atas), jadi tidak perlu di-`await` di jalur utama. `after()`
-  // (Next.js) menjalankan callback ini SETELAH response dikirim ke browser
-  // -- user langsung lihat kode pembayarannya, tanpa nunggu Resend/DB log.
+  // memengaruhi apa yang dilihat user (token Snap sudah fix dari respons
+  // createTransaction() di atas), jadi tidak perlu di-`await` di jalur
+  // utama. `after()` (Next.js) menjalankan callback ini SETELAH response
+  // dikirim ke browser -- user langsung bisa buka popup Snap, tanpa nunggu
+  // Resend/DB log.
   after(async () => {
     await logPaymentEvent({
       registrationId: registration.id,
       orderId,
       source: "checkout",
       statusApplied: "pending_payment",
-      paymentType: charge.payment_type,
       grossAmount,
     });
 
@@ -321,7 +187,14 @@ export async function createPaymentTransaction(
     }
   });
 
-  return { ok: true, orderId, display };
+  return {
+    ok: true,
+    orderId,
+    snap: {
+      token: snapTransaction.token,
+      redirectUrl: snapTransaction.redirect_url,
+    },
+  };
 }
 
 export async function checkAndExpireIfPastDeadline(registrationId: string) {
@@ -353,8 +226,10 @@ type ReconcileResult = { status: string | null; bibNumber: string | null };
 
 // Dipanggil dari CheckoutClient (polling otomatis + tombol "Cek status
 // sekarang"). Kalau status di DB masih pending_payment, fungsi ini AKTIF
-// nanya langsung ke Midtrans lewat Core API -- nggak cuma pasrah nunggu
-// webhook yang mungkin gagal terkirim.
+// nanya langsung ke Midtrans lewat endpoint Get Transaction Status Core API
+// -- nggak cuma pasrah nunggu webhook yang mungkin gagal terkirim. Ini
+// dipakai TERLEPAS dari transaksinya dibuat lewat Snap (sekarang) atau
+// dulu Core API charge, karena endpoint status memang sama untuk keduanya.
 export async function reconcilePaymentStatus(
   registrationId: string,
 ): Promise<ReconcileResult> {
