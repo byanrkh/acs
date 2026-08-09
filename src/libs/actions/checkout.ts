@@ -84,6 +84,12 @@ export async function createPaymentTransaction(
     (id) => SNAP_ENABLED_PAYMENT_MAP[id],
   );
 
+  // 🔍 DEBUG SEMENTARA — hapus lagi kalau GoPay sudah kekonfirmasi muncul.
+  // Ini bakal nongol di terminal `npm run dev` (atau log server/Vercel di
+  // production), BUKAN di console browser, karena ini server action.
+  console.log("[DEBUG] enabledMethods dari DB:", enabledMethods);
+  console.log("[DEBUG] enabledPayments dikirim ke Snap:", enabledPayments);
+
   // PROMO: gross_amount yang dikirim ke Midtrans WAJIB pakai final_amount
   // yang tersimpan di DB (sudah memperhitungkan promo kalau ada), BUKAN
   // dihitung ulang dari kategori.
@@ -116,7 +122,7 @@ export async function createPaymentTransaction(
         email: registration.email,
         phone: registration.telepon ?? undefined,
       },
-      // enabled_payments: enabledPayments,
+      enabled_payments: enabledPayments,
       expiry: {
         unit: "hour",
         duration: PAYMENT_DURATION_HOURS,
@@ -125,6 +131,9 @@ export async function createPaymentTransaction(
         finish: finishUrl,
       },
     });
+
+    // 🔍 DEBUG SEMENTARA — cek juga respons mentahnya.
+    console.log("[DEBUG] snapTransaction response:", snapTransaction);
   } catch (err) {
     console.error("Gagal membuat Snap transaction:", err);
     return { ok: false, error: "Gagal menghubungi Midtrans, coba lagi." };
