@@ -116,7 +116,7 @@ export async function createPaymentTransaction(
         email: registration.email,
         phone: registration.telepon ?? undefined,
       },
-      enabled_payments: enabledPayments,
+      // enabled_payments: enabledPayments,
       expiry: {
         unit: "hour",
         duration: PAYMENT_DURATION_HOURS,
