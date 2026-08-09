@@ -65,16 +65,10 @@ const golonganDarahOptions = [
 ];
 
 const jerseyOptions = [
-  { value: "XXS", label: "XXS" },
-  { value: "XS", label: "XS" },
   { value: "S", label: "S" },
   { value: "M", label: "M" },
   { value: "L", label: "L" },
   { value: "XL", label: "XL" },
-  { value: "2XL", label: "2XL" },
-  { value: "3XL", label: "3XL" },
-  { value: "4XL", label: "4XL" },
-  { value: "5XL", label: "5XL" },
 ];
 
 const stepLabels = ["Data pribadi", "Data medis", "Jersey & lainnya"];

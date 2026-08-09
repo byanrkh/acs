@@ -43,8 +43,8 @@ const SNAP_CLIENT_KEY = process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY ?? "";
 const SNAP_IS_PRODUCTION =
   process.env.NEXT_PUBLIC_MIDTRANS_IS_PRODUCTION === "true";
 const SNAP_JS_SRC = SNAP_IS_PRODUCTION
-  ? "https://app.midtrans.com/snap/snap.js"
-  : "https://app.sandbox.midtrans.com/snap/snap.js";
+  ? "https://app.midtrans.com/snap/snap.js" // production
+  : "https://app.sandbox.midtrans.com/snap/snap.js"; // sandbox
 
 type Registration = {
   id: string;
