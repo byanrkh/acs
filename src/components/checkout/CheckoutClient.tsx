@@ -2,7 +2,7 @@
 
 import Script from "next/script";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { FaClock, FaSpinner } from "react-icons/fa";
+import { FaClock, FaLock, FaSpinner } from "react-icons/fa";
 import Button from "@/components/Button";
 import PromoInput from "@/components/checkout/PromoInput";
 import PaymentStepper, {
@@ -497,7 +497,8 @@ export default function CheckoutClient({
                 "flex items-center justify-center gap-1.5 text-center text-[9px] uppercase tracking-widest text-black/35",
               )}
             >
-              Transaksi diproses aman lewat Midtrans
+              <FaLock />
+              Transaksi diproses aman melalui Midtrans
             </p>
           </>
         )}
