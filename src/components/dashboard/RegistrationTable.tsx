@@ -3,6 +3,7 @@
 import { Fragment, useMemo, useState, useTransition } from "react";
 import * as XLSX from "xlsx";
 import { resendRegistrationEmail } from "@/libs/actions/admin";
+import DeleteRegistrationModal from "@/components/dashboard/DeleteRegistrationModal";
 import { spaceMono, SpecialGhotic } from "@/libs/Font";
 import { cn } from "@/libs/cn";
 
@@ -259,8 +260,15 @@ export default function RegistrationsTable({
   const [feedback, setFeedback] = useState<Record<string, string>>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // Target peserta yang mau dihapus — begitu di-set, modal konfirmasi muncul.
+  const [deleteTarget, setDeleteTarget] = useState<Registration | null>(null);
+  // Dihapus optimis di sisi client biar hilang instan dari tabel walau
+  // realtime subscription di parent belum sempat propagate event DELETE-nya.
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
+
   const filtered = useMemo(() => {
     return registrations.filter((r) => {
+      if (deletedIds.has(r.id)) return false;
       const matchStatus = statusFilter === "semua" || r.status === statusFilter;
       const q = query.trim().toLowerCase();
       const matchQuery =
@@ -271,7 +279,7 @@ export default function RegistrationsTable({
         r.nama_bib.toLowerCase().includes(q);
       return matchStatus && matchQuery;
     });
-  }, [registrations, query, statusFilter]);
+  }, [registrations, query, statusFilter, deletedIds]);
 
   function handleExport() {
     // Semua kolom dijabarin lengkap, bukan cuma ringkasan yang tampil di UI.
@@ -334,6 +342,15 @@ export default function RegistrationsTable({
         });
       }, 4000);
     });
+  }
+
+  function handleDeleted(id: string) {
+    setDeletedIds((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+    setExpandedId((prev) => (prev === id ? null : prev));
   }
 
   const canResend = (status: string) =>
@@ -475,8 +492,8 @@ export default function RegistrationsTable({
                       className="px-3 py-3"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      {canResend(r.status) ? (
-                        <div>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {canResend(r.status) && (
                           <button
                             type="button"
                             onClick={() => handleResend(r.id)}
@@ -487,14 +504,19 @@ export default function RegistrationsTable({
                               ? "Mengirim..."
                               : resendLabel(r.status)}
                           </button>
-                          {feedback[r.id] && (
-                            <p className="mt-1 text-[10px] font-bold text-[#1F4B33]">
-                              {feedback[r.id]}
-                            </p>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-black/30">—</span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setDeleteTarget(r)}
+                          className="border-2 border-[#D91E36] bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-[#D91E36] hover:bg-[#D91E36] hover:text-white"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                      {feedback[r.id] && (
+                        <p className="mt-1 text-[10px] font-bold text-[#1F4B33]">
+                          {feedback[r.id]}
+                        </p>
                       )}
                     </td>
                   </tr>
@@ -572,21 +594,30 @@ export default function RegistrationsTable({
                 {isOpen && (
                   <div>
                     <DetailPanel r={r} />
-                    <div className="border-t-4 border-black bg-[#FFF7DA] px-4 pb-4">
-                      {canResend(r.status) && (
+                    <div className="space-y-2 border-t-4 border-black bg-[#FFF7DA] px-4 pb-4 pt-4">
+                      <div className="flex gap-2">
+                        {canResend(r.status) && (
+                          <button
+                            type="button"
+                            onClick={() => handleResend(r.id)}
+                            disabled={isPending && resendingId === r.id}
+                            className="flex-1 border-2 border-black bg-white px-3 py-2 text-[11px] font-bold uppercase tracking-widest hover:bg-black hover:text-white disabled:opacity-50"
+                          >
+                            {resendingId === r.id
+                              ? "Mengirim..."
+                              : resendLabel(r.status)}
+                          </button>
+                        )}
                         <button
                           type="button"
-                          onClick={() => handleResend(r.id)}
-                          disabled={isPending && resendingId === r.id}
-                          className="w-full border-2 border-black bg-white px-3 py-2 text-[11px] font-bold uppercase tracking-widest hover:bg-black hover:text-white disabled:opacity-50"
+                          onClick={() => setDeleteTarget(r)}
+                          className="flex-1 border-2 border-[#D91E36] bg-white px-3 py-2 text-[11px] font-bold uppercase tracking-widest text-[#D91E36] hover:bg-[#D91E36] hover:text-white"
                         >
-                          {resendingId === r.id
-                            ? "Mengirim..."
-                            : resendLabel(r.status)}
+                          Delete
                         </button>
-                      )}
+                      </div>
                       {feedback[r.id] && (
-                        <p className="mt-2 text-[11px] font-bold text-[#1F4B33]">
+                        <p className="text-[11px] font-bold text-[#1F4B33]">
                           {feedback[r.id]}
                         </p>
                       )}
@@ -603,6 +634,15 @@ export default function RegistrationsTable({
           )}
         </div>
       </div>
+
+      {deleteTarget && (
+        <DeleteRegistrationModal
+          registrationId={deleteTarget.id}
+          namaLengkap={deleteTarget.nama_lengkap}
+          onClose={() => setDeleteTarget(null)}
+          onDeleted={handleDeleted}
+        />
+      )}
     </div>
   );
 }

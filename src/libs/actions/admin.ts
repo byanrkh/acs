@@ -199,6 +199,7 @@ export async function resendRegistrationEmail(
     return { ok: false, error: "Sesi login sudah habis, silakan login ulang." };
   }
 
+
   const { data: registration, error } = await supabaseAdmin
     .from("registrations")
     .select("*")
@@ -327,6 +328,51 @@ export async function resendRegistrationEmail(
       bib_number: registration.bib_number,
       email: registration.email,
       status: registration.status,
+    },
+  });
+
+  return { ok: true };
+}
+
+export async function deleteRegistration(
+  registrationId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const admin = await getAdminUser();
+  if (!admin) {
+    return { ok: false, error: "Sesi login sudah habis, silakan login ulang." };
+  }
+
+  const { data: existing, error: fetchError } = await supabaseAdmin
+    .from("registrations")
+    .select("id, nama_lengkap, nama_bib, email, bib_number, status")
+    .eq("id", registrationId)
+    .single();
+
+  if (fetchError || !existing) {
+    return { ok: false, error: "Data peserta tidak ditemukan." };
+  }
+
+  const { error: deleteError } = await supabaseAdmin
+    .from("registrations")
+    .delete()
+    .eq("id", registrationId);
+
+  if (deleteError) {
+    console.error("[deleteRegistration] gagal hapus peserta:", deleteError);
+    return { ok: false, error: "Gagal menghapus data peserta, coba lagi." };
+  }
+
+  await logAuditEvent({
+    actorEmail: admin.email,
+    action: "delete_registration",
+    description: `Menghapus data peserta "${existing.nama_lengkap}" (BIB ${existing.bib_number ?? "-"}, status "${existing.status}")`,
+    registrationId: existing.id,
+    metadata: {
+      nama_lengkap: existing.nama_lengkap,
+      nama_bib: existing.nama_bib,
+      email: existing.email,
+      bib_number: existing.bib_number,
+      status: existing.status,
     },
   });
 

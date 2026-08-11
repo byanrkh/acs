@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { FaLandmark, FaExclamationTriangle } from "react-icons/fa";
+import { FaLandmark, FaExclamationTriangle, FaWhatsapp } from "react-icons/fa";
+import { CONTACT_INFO } from "@/libs/config/contact";
 import Button from "@/components/Button";
 import CopyButton from "@/components/copyButton";
 import PromoInput from "@/components/checkout/PromoInput";
@@ -132,6 +133,26 @@ export default function TransferCheckoutClient({
             <p className="mt-3 text-sm text-white/80">
               Detail e-ticket sudah kami kirim ke email kamu.
             </p>
+
+            <div className="mt-5 border-t-2 border-dashed border-white/25 pt-5">
+              <p className="text-xs text-white/80">
+                Satu langkah lagi — gabung channel WhatsApp resmi kami biar
+                nggak ketinggalan info race pack, jadwal, dan pengumuman penting
+                lainnya.
+              </p>
+              <a
+                href={CONTACT_INFO.whatsappChannelUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(
+                  SpecialGhotic.className,
+                  "mt-4 inline-flex w-full items-center justify-center gap-2 border-4 border-black bg-[#25D366] px-4 py-3 text-sm uppercase tracking-tight text-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]",
+                )}
+              >
+                <FaWhatsapp size={18} />
+                Gabung Channel WhatsApp ACS
+              </a>
+            </div>
           </div>
         )}
 
