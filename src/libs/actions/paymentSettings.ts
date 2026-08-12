@@ -20,6 +20,7 @@ const PAYMENT_METHOD_IDS = [
   "mandiri",
   "bni",
   "bri",
+  "bsi",
 ] as const;
 
 export type PaymentMethodId = (typeof PAYMENT_METHOD_IDS)[number];
@@ -58,6 +59,12 @@ const PAYMENT_METHOD_META: Record<PaymentMethodId, PaymentMethodMeta> = {
     shortLabel: "BRI",
     group: "va",
   },
+  bsi: {
+    id: "bsi",
+    label: "BSI Virtual Account",
+    shortLabel: "BSI",
+    group: "va",
+  }
 };
 
 // Default kalau baris di DB belum ada (misal tabelnya baru dibikin dan
@@ -71,6 +78,7 @@ const DEFAULT_ENABLED: Record<PaymentMethodId, boolean> = {
   mandiri: true,
   bni: true,
   bri: true,
+  bsi: true,
 };
 
 async function getPaymentMethodSettingsMap(): Promise<

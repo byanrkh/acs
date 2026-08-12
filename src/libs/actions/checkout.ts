@@ -31,6 +31,7 @@ const SNAP_ENABLED_PAYMENT_MAP: Record<PaymentMethodId, string> = {
   mandiri: "echannel",
   bni: "bni_va",
   bri: "bri_va",
+  bsi: "bsi_va",
 };
 
 export type PaymentSnapResult = {
