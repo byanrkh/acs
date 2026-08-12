@@ -10,29 +10,40 @@ import { generateQrCodeBuffer } from "@/libs/email/qrcode";
 import { getRegistrationFee } from "@/libs/config/pricing";
 import { logAuditEvent } from "@/libs/actions/logs";
 
+// Shape data peserta yang dipakai bareng oleh hasil scan QR/HID (selalu 1
+// data spesifik) maupun hasil pencarian manual (bisa lebih dari 1 data,
+// karena email/NISN/telepon sekarang boleh dipakai berkali-kali daftar).
+export type ScanRegistration = {
+  id: string;
+  nama_lengkap: string;
+  nama_bib: string;
+  email: string;
+  telepon: string;
+  kategori: "pelajar" | "umum";
+  nisn: string | null;
+  nik_terakhir: string | null;
+  ukuran_jersey: string;
+  jenis_kelamin: "L" | "P";
+  golongan_darah: string;
+  riwayat_penyakit: string | null;
+  kontak_darurat_nama: string;
+  kontak_darurat_telepon: string;
+  status: string;
+  bib_number: string | null;
+  race_pack_taken_at: string | null;
+};
+
 export type ScanResult =
-  | {
-      ok: true;
-      registration: {
-        id: string;
-        nama_lengkap: string;
-        nama_bib: string;
-        email: string;
-        telepon: string;
-        kategori: "pelajar" | "umum";
-        nisn: string | null;
-        nik_terakhir: string | null;
-        ukuran_jersey: string;
-        jenis_kelamin: "L" | "P";
-        golongan_darah: string;
-        riwayat_penyakit: string | null;
-        kontak_darurat_nama: string;
-        kontak_darurat_telepon: string;
-        status: string;
-        bib_number: string | null;
-        race_pack_taken_at: string | null;
-      };
-    }
+  | { ok: true; registration: ScanRegistration }
+  | { ok: false; error: string };
+
+// Hasil pencarian manual (email/no. HP) BISA balikin lebih dari satu data
+// sekarang, karena satu email/NISN/telepon boleh dipakai lebih dari sekali
+// daftar. Sengaja dipisah dari ScanResult (yang tetap 1 data spesifik)
+// supaya UI scan lewat kamera/HID (hasilnya selalu presisi 1 orang lewat
+// UUID di QR) tidak perlu berubah sama sekali.
+export type ContactLookupResult =
+  | { ok: true; registrations: ScanRegistration[] }
   | { ok: false; error: string };
 
 // Kolom yang dipakai bareng oleh lookupRegistrationByScan (QR/HID) dan
@@ -51,6 +62,11 @@ function extractRegistrationId(rawScanValue: string): string | null {
   return match ? match[0] : null;
 }
 
+// Scan lewat kamera (html5-qrcode) ATAU HID barcode scanner. QR/barcode-nya
+// selalu ngebawa UUID registrasi yang spesifik punya SATU orang, jadi hasil
+// dari jalur ini SELALU 1 data spesifik — tidak terpengaruh sama sekali oleh
+// kebijakan "email/NISN/telepon boleh dipakai berkali-kali daftar", karena
+// yang dicocokkan di sini adalah id (primary key), bukan email/NISN/telepon.
 export async function lookupRegistrationByScan(rawScanValue: string): Promise<ScanResult> {
   const admin = await getAdminUser();
   if (!admin) {
@@ -105,9 +121,19 @@ function normalizePhoneNumber(rawValue: string): string {
 // Dipakai oleh panel "Input Manual" di halaman Scan — fallback kalau QR
 // peserta rusak/ga kebawa, tapi panitia tau email atau nomor HP-nya.
 // Search-nya auto-detect: ada "@" → dianggap email, selain itu → nomor HP.
+//
+// PERUBAHAN: dulu jalur ini cuma balikin 1 data (row paling baru) via
+// .maybeSingle(). Sekarang, karena satu email/nomor HP bisa kepakai buat
+// lebih dari satu pendaftaran, jalur ini balikin SEMUA data yang cocok
+// (diurutkan dari yang paling baru daftar), biar panitia bisa milih data
+// yang mana yang mau diproses race pack-nya kalau ternyata ada lebih dari
+// satu. Pengecekan status "confirmed" TIDAK dilakukan di sini lagi —
+// dipindah ke saat panitia memilih salah satu data dari daftar hasil
+// pencarian (lihat ScanPage), supaya data yang belum confirmed tetap
+// kelihatan di daftar (biar panitia tau alasannya), bukan malah "hilang".
 export async function lookupRegistrationByContact(
   rawValue: string,
-): Promise<ScanResult> {
+): Promise<ContactLookupResult> {
   const admin = await getAdminUser();
   if (!admin) {
     return { ok: false, error: "Sesi login sudah habis, silakan login ulang." };
@@ -128,30 +154,25 @@ export async function lookupRegistrationByContact(
   const query = supabaseAdmin
     .from("registrations")
     .select(SCAN_SELECT_FIELDS)
-    .order("created_at", { ascending: false })
-    .limit(1);
+    .order("created_at", { ascending: false });
 
   const { data: registrations, error } = isEmail
     ? await query.ilike("email", trimmed)
     : await query.eq("telepon", normalizedPhone);
 
-  const registration = registrations?.[0];
+  if (error) {
+    console.error("[lookupRegistrationByContact] gagal cari data:", error);
+    return { ok: false, error: "Terjadi kesalahan saat mencari data, coba lagi." };
+  }
 
-  if (error || !registration) {
+  if (!registrations || registrations.length === 0) {
     return {
       ok: false,
       error: "Peserta dengan email/nomor HP tersebut tidak ditemukan.",
     };
   }
 
-  if (registration.status !== "confirmed") {
-    return {
-      ok: false,
-      error: `Peserta ditemukan, tapi status pendaftaran belum "confirmed" (status saat ini: ${registration.status}).`,
-    };
-  }
-
-  return { ok: true, registration };
+  return { ok: true, registrations };
 }
 
 export async function markRacePackTaken(registrationId: string) {

@@ -6,6 +6,7 @@ import {
   lookupRegistrationByContact,
   markRacePackTaken,
   type ScanResult,
+  type ScanRegistration,
 } from "@/libs/actions/admin";
 import { SpecialGhotic, spaceMono } from "@/libs/Font";
 import { cn } from "@/libs/cn";
@@ -127,6 +128,15 @@ function DetailSection({
 
 export default function ScanPage() {
   const [result, setResult] = useState<ScanResult | null>(null);
+  // Dipakai KHUSUS oleh jalur pencarian manual (email/no. HP): kalau ada
+  // lebih dari 1 data yang cocok (karena email/NISN/telepon sekarang boleh
+  // dipakai buat lebih dari 1x pendaftaran), daftar pilihannya ditaruh di
+  // sini dulu, nunggu panitia pilih salah satu. Jalur scan kamera/HID TIDAK
+  // pernah mengisi state ini karena hasilnya selalu 1 data spesifik (lewat
+  // UUID di QR).
+  const [contactMatches, setContactMatches] = useState<
+    ScanRegistration[] | null
+  >(null);
   const [scannerActive, setScannerActive] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [takenJustNow, setTakenJustNow] = useState(false);
@@ -159,6 +169,8 @@ export default function ScanPage() {
 
   // Jalur validasi bersama: dipakai baik oleh kamera (html5-qrcode) maupun
   // oleh HID barcode scanner, supaya keduanya konsisten dan tidak dobel logic.
+  // Hasilnya SELALU 1 data spesifik (dicocokkan lewat UUID di QR), jadi tidak
+  // pernah menyentuh state contactMatches.
   const processScannedCode = useCallback((rawCode: string) => {
     const decodedText = rawCode.trim();
     if (!decodedText) return;
@@ -166,6 +178,7 @@ export default function ScanPage() {
 
     lastScannedRef.current = decodedText;
     setTakenJustNow(false);
+    setContactMatches(null);
     startTransition(async () => {
       const res = await lookupRegistrationByScan(decodedText);
       setResult(res);
@@ -184,29 +197,64 @@ export default function ScanPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Dipanggil setelah panitia memilih salah satu data dari daftar hasil
+  // pencarian manual (contactMatches), ATAU langsung dipanggil kalau hasil
+  // pencarian cuma 1 data. Validasi status "confirmed" dilakukan di sini
+  // (per data yang dipilih), bukan lagi di server action, supaya data yang
+  // belum confirmed tetap kelihatan di daftar pilihan.
+  function selectContactMatch(reg: ScanRegistration) {
+    if (reg.status !== "confirmed") {
+      const errorMsg = `Peserta ditemukan, tapi status pendaftaran belum "confirmed" (status saat ini: ${reg.status}).`;
+      setResult({ ok: false, error: errorMsg });
+      playTone(220, 260);
+      pushHistory({ label: "Cari gagal", sublabel: errorMsg, ok: false });
+      return;
+    }
+
+    setResult({ ok: true, registration: reg });
+    playTone(880);
+    pushHistory({
+      label: reg.nama_lengkap,
+      sublabel: `BIB ${reg.bib_number ?? "-"}`,
+      ok: true,
+    });
+  }
+
   // Jalur pencarian manual (fallback kalau QR peserta rusak/ga kebawa):
   // panitia ketik email ATAU nomor HP, backend yang auto-detect mana yang
   // dimaksud (lihat lookupRegistrationByContact). Sengaja terpisah dari
   // processScannedCode karena inputnya bukan hasil decode QR/UUID.
+  //
+  // PERUBAHAN: karena email/NISN/telepon sekarang boleh dipakai buat lebih
+  // dari 1x pendaftaran, hasil pencariannya bisa lebih dari 1 data. Kalau
+  // cuma ketemu 1, langsung tampil seperti biasa. Kalau lebih dari 1,
+  // tampilkan daftar dulu (contactMatches) biar panitia yang pilih.
   function processManualContact(rawValue: string) {
     const value = rawValue.trim();
     if (!value) return;
 
     setTakenJustNow(false);
+    setContactMatches(null);
     startTransition(async () => {
       const res = await lookupRegistrationByContact(value);
-      setResult(res);
-      if (res.ok) {
-        playTone(880);
-        pushHistory({
-          label: res.registration.nama_lengkap,
-          sublabel: `BIB ${res.registration.bib_number ?? "-"}`,
-          ok: true,
-        });
-      } else {
+
+      if (!res.ok) {
+        setResult({ ok: false, error: res.error });
         playTone(220, 260);
         pushHistory({ label: "Cari gagal", sublabel: res.error, ok: false });
+        return;
       }
+
+      if (res.registrations.length === 1) {
+        setResult(null);
+        selectContactMatch(res.registrations[0]);
+        return;
+      }
+
+      // Lebih dari 1 data cocok — tampilkan daftar pilihan, jangan langsung
+      // tampilkan salah satunya.
+      setResult(null);
+      setContactMatches(res.registrations);
     });
   }
 
@@ -303,6 +351,15 @@ export default function ScanPage() {
   function handleScanAgain() {
     lastScannedRef.current = null;
     setResult(null);
+    setContactMatches(null);
+    setTakenJustNow(false);
+  }
+
+  // Balik dari tampilan detail ke daftar pilihan hasil pencarian manual
+  // (dipakai kalau panitia salah pilih data di antara beberapa yang cocok).
+  // contactMatches sengaja tidak direset di sini, cuma di-hide lewat result.
+  function handleBackToMatches() {
+    setResult(null);
     setTakenJustNow(false);
   }
 
@@ -376,7 +433,10 @@ export default function ScanPage() {
 
           {/* Input manual — fallback kalau kamera/scanner ga bisa dipakai,
               atau QR peserta rusak/ga kebawa. Cari berdasarkan EMAIL atau
-              NOMOR HP peserta, otomatis kedeteksi dari yang diketik. */}
+              NOMOR HP peserta, otomatis kedeteksi dari yang diketik. Karena
+              email/no. HP sekarang boleh dipakai lebih dari 1x daftar, hasil
+              cari bisa nampilin lebih dari 1 data (lihat panel hasil di
+              kolom kanan). */}
           <div className="mt-4 border-2 border-black bg-white">
             <button
               type="button"
@@ -416,7 +476,8 @@ export default function ScanPage() {
                     "mt-2 text-[9px] uppercase tracking-widest text-black/40",
                   )}
                 >
-                  cth: nama@email.com atau 0812xxxxxxx
+                  cth: nama@email.com atau 0812xxxxxxx — kalau hasilnya lebih
+                  dari 1 data, kamu bisa pilih salah satu di panel kanan.
                 </p>
               </form>
             )}
@@ -493,7 +554,7 @@ export default function ScanPage() {
             </div>
           )}
 
-          {!result && !isPending && (
+          {!result && !contactMatches && !isPending && (
             <div className="flex h-full min-h-[280px] flex-col items-center justify-center border-4 border-dashed border-black/20 p-8 text-center">
               <span className="mb-3 text-4xl">🎫</span>
               <p
@@ -507,6 +568,62 @@ export default function ScanPage() {
               <p className="mt-1 max-w-xs text-xs text-black/40">
                 Hasil data peserta akan muncul di sini.
               </p>
+            </div>
+          )}
+
+          {/* Daftar pilihan kalau pencarian manual nemu lebih dari 1 data
+              yang cocok (email/no. HP dipakai lebih dari 1x daftar). */}
+          {contactMatches && !result && !isPending && (
+            <div className="border-4 border-black bg-white p-5 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
+              <p
+                className={cn(
+                  SpecialGhotic.className,
+                  "text-sm uppercase tracking-tight",
+                )}
+              >
+                Ditemukan {contactMatches.length} data yang cocok
+              </p>
+              <p className="mt-1 text-xs text-black/50">
+                Email/nomor HP ini dipakai lebih dari sekali daftar. Pilih data
+                yang sesuai di bawah.
+              </p>
+
+              <div className="mt-4 space-y-2">
+                {contactMatches.map((reg) => (
+                  <button
+                    key={reg.id}
+                    type="button"
+                    onClick={() => selectContactMatch(reg)}
+                    className="flex w-full items-center justify-between gap-3 border-2 border-black bg-white px-3 py-2.5 text-left transition-colors hover:bg-[#FFF7DA]"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold">
+                        {reg.nama_lengkap}
+                      </p>
+                      <p
+                        className={cn(
+                          spaceMono.className,
+                          "mt-0.5 truncate text-[10px] uppercase tracking-widest text-black/40",
+                        )}
+                      >
+                        {reg.email} · {reg.telepon} ·{" "}
+                        <span className="capitalize">{reg.kategori}</span>
+                      </p>
+                    </div>
+                    <span
+                      className={cn(
+                        spaceMono.className,
+                        "shrink-0 border-2 border-black px-2 py-1 text-[9px] font-bold uppercase tracking-widest",
+                        reg.status === "confirmed"
+                          ? "bg-[#7ED957]"
+                          : "bg-black/10",
+                      )}
+                    >
+                      {reg.bib_number ? `BIB ${reg.bib_number}` : reg.status}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
@@ -672,13 +789,27 @@ export default function ScanPage() {
                 </div>
               )}
 
-              <button
-                type="button"
-                onClick={handleScanAgain}
-                className="mt-4 w-full border-2 border-black bg-white px-4 py-2 text-xs font-bold uppercase tracking-widest hover:bg-black hover:text-white sm:w-auto"
-              >
-                Scan Berikutnya
-              </button>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {/* Cuma muncul kalau result ini berasal dari daftar pilihan
+                    (contactMatches masih ada lebih dari 1 data), biar panitia
+                    bisa balik milih data lain tanpa harus ngetik ulang. */}
+                {contactMatches && contactMatches.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={handleBackToMatches}
+                    className="w-full border-2 border-black bg-white px-4 py-2 text-xs font-bold uppercase tracking-widest hover:bg-black hover:text-white sm:w-auto"
+                  >
+                    ← Kembali ke Daftar
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleScanAgain}
+                  className="w-full border-2 border-black bg-white px-4 py-2 text-xs font-bold uppercase tracking-widest hover:bg-black hover:text-white sm:w-auto"
+                >
+                  Scan Berikutnya
+                </button>
+              </div>
             </div>
           )}
         </div>

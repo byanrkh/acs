@@ -26,6 +26,13 @@ export type RegistrationResult =
   | { ok: true; registrationId: string; redirectPath?: string }
   | { ok: false; error: string; field?: keyof RegistrationPayload };
 
+// CATATAN PERUBAHAN: dulu di sini ada pengecekan "sudah pernah daftar belum"
+// berdasarkan email (unik) dan NISN/NIK (unik per kategori). Sekarang
+// sengaja DIHAPUS karena satu email / NISN / nomor HP boleh dipakai untuk
+// lebih dari satu kali pendaftaran (misal: satu orang tua daftarin lebih
+// dari satu anak pakai email yang sama, atau kakak-adik satu NISN keluarga,
+// dsb). Validasi yang tersisa di bawah ini HANYA validasi format, bukan
+// validasi keunikan/duplikat.
 function validatePayload(data: RegistrationPayload): RegistrationResult | null {
   if (!data.namaLengkap?.trim()) {
     return { ok: false, error: "Nama lengkap wajib diisi.", field: "namaLengkap" };
@@ -53,59 +60,6 @@ export async function submitRegistration(
 
   const email = data.email.trim().toLowerCase();
 
-  // 1) Cek email ganda
-  const { data: existingEmail, error: emailCheckError } = await supabaseAdmin
-    .from("registrations")
-    .select("id")
-    .eq("email", email)
-    .maybeSingle();
-
-  if (emailCheckError) {
-    console.error("Gagal cek email ganda:", emailCheckError);
-    return { ok: false, error: "Terjadi kesalahan server, coba lagi." };
-  }
-  if (existingEmail) {
-    return { ok: false, error: "Email ini sudah terdaftar sebelumnya.", field: "email" };
-  }
-
-  // 2) Cek NISN/NIK ganda sesuai kategori
-  if (data.kategori === "pelajar") {
-    const { data: existingNisn, error: nisnCheckError } = await supabaseAdmin
-      .from("registrations")
-      .select("id")
-      .eq("kategori", "pelajar")
-      .eq("nisn", data.nisn)
-      .maybeSingle();
-
-    if (nisnCheckError) {
-      console.error("Gagal cek NISN ganda:", nisnCheckError);
-      return { ok: false, error: "Terjadi kesalahan server, coba lagi." };
-    }
-    if (existingNisn) {
-      return { ok: false, error: "NISN ini sudah terdaftar sebelumnya.", field: "nisn" };
-    }
-  } else {
-    const { data: existingNik, error: nikCheckError } = await supabaseAdmin
-      .from("registrations")
-      .select("id")
-      .eq("kategori", "umum")
-      .eq("nik_terakhir", data.nikTerakhir)
-      .ilike("nama_lengkap", data.namaLengkap.trim())
-      .maybeSingle();
-
-    if (nikCheckError) {
-      console.error("Gagal cek NIK ganda:", nikCheckError);
-      return { ok: false, error: "Terjadi kesalahan server, coba lagi." };
-    }
-    if (existingNik) {
-      return {
-        ok: false,
-        error: "Data dengan nama & NIK ini sudah terdaftar sebelumnya.",
-        field: "nikTerakhir",
-      };
-    }
-  }
-
   const paymentMethod = process.env.NEXT_PUBLIC_PAYMENT_METHOD ?? "MIDTRANS";
   if (paymentMethod === "BANK_TRANSFER") {
     return submitTransferRegistration(data, email);
@@ -116,7 +70,9 @@ export async function submitRegistration(
   // applyPromoToRegistration, yang akan meng-update kolom ini.
   const baseAmount = getRegistrationFee(data.kategori);
 
-  // 3) Simpan ke database dan ambil 'id' (UUID) baris baru
+  // Simpan ke database dan ambil 'id' (UUID) baris baru. Tidak ada lagi cek
+  // "sudah terdaftar sebelumnya" di sini — email/NISN/NIK/telepon yang sama
+  // boleh dipakai berkali-kali, tiap submit selalu bikin baris baru.
   const { data: inserted, error: insertError } = await supabaseAdmin
     .from("registrations")
     .insert({
@@ -145,7 +101,16 @@ export async function submitRegistration(
 
   if (insertError) {
     if (insertError.code === "23505") {
-      return { ok: false, error: "Data ini sepertinya sudah pernah didaftarkan." };
+      // Kalau ini masih ke-trigger, artinya masih ada UNIQUE constraint di
+      // level database (kolom email/nisn/telepon) yang belum dilepas.
+      // Cek/lepas constraint-nya langsung di Supabase (Table Editor ->
+      // registrations -> kolom terkait -> hapus "Unique" constraint),
+      // karena ini bukan lagi dicegah dari sisi kode.
+      return {
+        ok: false,
+        error:
+          "Data ini masih dianggap duplikat oleh database. Cek constraint UNIQUE di tabel registrations (kolom email/nisn/telepon) di Supabase.",
+      };
     }
     console.error("Gagal simpan registrasi:", insertError);
     return { ok: false, error: "Gagal menyimpan data, coba lagi." };
