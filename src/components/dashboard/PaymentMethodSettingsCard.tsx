@@ -198,12 +198,6 @@ export default function PaymentMethodSettingsCard({
       </div>
 
       <div className="space-y-5 p-5">
-        <p className={cn(spaceMono.className, "text-[11px] text-black/50")}>
-          Nyalakan/matikan metode yang ditawarkan ke peserta di halaman
-          checkout. Metode yang dimatikan langsung disembunyikan dari peserta
-          dan ditolak kalau tetap dicoba lewat request langsung.
-        </p>
-
         <div>
           <p
             className={cn(
@@ -234,14 +228,6 @@ export default function PaymentMethodSettingsCard({
               <MethodRow key={row.id} row={row} onToggled={handleToggled} />
             ))}
           </div>
-        </div>
-
-        <div className="flex items-start gap-2 border-2 border-black/10 bg-[#FDF6E9] px-3 py-2">
-          <FaCheck className="mt-0.5 shrink-0 text-black/40" size={11} />
-          <p className={cn(spaceMono.className, "text-[10px] text-black/50")}>
-            QRIS default nonaktif karena belum di-approve di akun Midtrans kita
-            — nyalakan begitu Midtrans sudah mengaktifkannya.
-          </p>
         </div>
       </div>
     </div>
