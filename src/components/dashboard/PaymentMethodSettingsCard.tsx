@@ -18,6 +18,7 @@ const METHOD_ICON: Record<PaymentMethodId, React.ReactNode> = {
   mandiri: <FaBuildingColumns size={14} />,
   bni: <FaBuildingColumns size={14} />,
   bri: <FaBuildingColumns size={14} />,
+  bsi: <FaBuildingColumns size={14} />,
 };
 
 const METHOD_ACCENT: Record<PaymentMethodId, string> = {
@@ -27,6 +28,7 @@ const METHOD_ACCENT: Record<PaymentMethodId, string> = {
   mandiri: "#003D79",
   bni: "#F58220",
   bri: "#00529C",
+  bsi: "#1F4B33",
 };
 
 function formatUpdatedAt(iso: string | null) {
