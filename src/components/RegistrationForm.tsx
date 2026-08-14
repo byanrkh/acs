@@ -64,12 +64,7 @@ const golonganDarahOptions = [
   { value: "tidak-tahu", label: "Tidak tahu" },
 ];
 
-const jerseyOptions = [
-  { value: "S", label: "S" },
-  { value: "M", label: "M" },
-  { value: "L", label: "L" },
-  { value: "XL", label: "XL" },
-];
+const jerseyOptions = [{ value: "All Size", label: "All Size" }];
 
 const stepLabels = ["Data pribadi", "Data medis", "Jersey & lainnya"];
 

@@ -3,6 +3,7 @@
 import { after } from "next/server";
 import { supabaseAdmin } from "@/libs/supabase/server";
 import { submitTransferRegistration } from "@/libs/actions/registrationTransfer";
+import { createPaymentTransaction } from "@/libs/actions/checkout";
 import { getRegistrationFee } from "@/libs/config/pricing";
 import { resend, EMAIL_FROM } from "@/libs/email/resend";
 import { buildInvoiceEmailHtml } from "@/libs/email/invoiceTemplate";
@@ -264,7 +265,27 @@ export async function submitRegistration(
     return { ok: false, error: "Gagal menyimpan data, coba lagi." };
   }
 
-  return { ok: true, registrationId: inserted.id as string };
+  const registrationId = inserted.id as string;
+
+  // Langsung bikin transaksi Midtrans + kirim invoice PERTAMA di sini,
+  // supaya user dapet email invoice segera setelah submit -- ga perlu
+  // nunggu klik "Bayar Sekarang" dulu di /checkout/[id]. Dijalankan di
+  // after() (Next.js) biar ga nge-block response submit (createPaymentTransaction
+  // manggil Midtrans + Resend, dua-duanya network call). Fungsi ini sendiri
+  // best-effort & idempotent soal invoice (guard invoice_email_sent_at),
+  // jadi kalau nanti user klik "Bayar Sekarang" beneran, dia cuma bikin
+  // transaksi baru (fresh token) tanpa kirim ulang invoice.
+  after(async () => {
+    const result = await createPaymentTransaction(registrationId);
+    if (!result.ok) {
+      console.error(
+        "[submitRegistration] gagal membuat transaksi awal & kirim invoice:",
+        result.error,
+      );
+    }
+  });
+
+  return { ok: true, registrationId };
 }
 
 // ============================================================
