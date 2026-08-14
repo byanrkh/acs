@@ -11,7 +11,7 @@ import {
 import { CONTACT_INFO } from "@/libs/config/contact";
 import Button from "@/components/Button";
 import CopyButton from "@/components/copyButton";
-import PromoInput from "@/components/checkout/PromoInput";
+import PromoInput from "@/components/promo/PromoInput";
 import PaymentStepper, {
   type PaymentStep,
 } from "@/components/checkout/PaymentStepper";

@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   listPromos,
   deletePromo,
   togglePromoActive,
   type PromoAdminRow,
-} from "@/libs/actions/promoAdmin";
-import PromoFormModal from "@/components/dashboard/PromoFormModal";
+} from "@/libs/actions/promo/admin";
+import PromoFormModal from "@/components/promo/PromoFormModal";
+import MovePromoModal from "@/components/promo/MovePromoModal";
 import { spaceMono, SpecialGhotic } from "@/libs/Font";
 import { cn } from "@/libs/cn";
 
@@ -57,10 +58,12 @@ export default function PromoManagementCard() {
   const [promos, setPromos] = useState<PromoAdminRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [activeFolder, setActiveFolder] = useState("/");
   const [modalState, setModalState] = useState<
     | { mode: "closed" }
     | { mode: "create" }
     | { mode: "edit"; promo: PromoAdminRow }
+    | { mode: "move"; promo: PromoAdminRow }
   >({ mode: "closed" });
   const [rowError, setRowError] = useState<{
     id: string;
@@ -84,12 +87,35 @@ export default function PromoManagementCard() {
     setPromos(result.data);
   }
 
+  // Folder itu cuma nilai unik dari promos[].folder -- "/" selalu ada
+  // biar tetep ada tab default walau belum ada promo sama sekali.
+  const folders = useMemo(() => {
+    const unique = new Set<string>(["/"]);
+    promos.forEach((p) => unique.add(p.folder));
+    return Array.from(unique).sort((a, b) =>
+      a === "/" ? -1 : b === "/" ? 1 : a.localeCompare(b),
+    );
+  }, [promos]);
+
+  const visiblePromos = useMemo(
+    () => promos.filter((p) => p.folder === activeFolder),
+    [promos, activeFolder],
+  );
+
   function handleSaved(promo: PromoAdminRow) {
     setPromos((prev) => {
       const exists = prev.some((p) => p.id === promo.id);
       if (exists) return prev.map((p) => (p.id === promo.id ? promo : p));
       return [promo, ...prev];
     });
+    setActiveFolder(promo.folder);
+    setModalState({ mode: "closed" });
+  }
+
+  function handleMoved(promoId: string, folder: string) {
+    setPromos((prev) =>
+      prev.map((p) => (p.id === promoId ? { ...p, folder } : p)),
+    );
     setModalState({ mode: "closed" });
   }
 
@@ -149,6 +175,30 @@ export default function PromoManagementCard() {
         </button>
       </div>
 
+      {/* Tab folder */}
+      <div className="flex flex-wrap gap-2 border-b-4 border-black bg-[#FDF6E9] px-4 py-3">
+        {folders.map((folder) => {
+          const count = promos.filter((p) => p.folder === folder).length;
+          const isActive = folder === activeFolder;
+          return (
+            <button
+              key={folder}
+              type="button"
+              onClick={() => setActiveFolder(folder)}
+              className={cn(
+                spaceMono.className,
+                "border-2 border-black px-3 py-1.5 text-[11px] font-bold",
+                isActive
+                  ? "bg-black text-white"
+                  : "bg-white text-black hover:bg-black/5",
+              )}
+            >
+              {folder} ({count})
+            </button>
+          );
+        })}
+      </div>
+
       {isLoading && (
         <p className="p-6 text-center text-sm text-black/40">
           Memuat daftar promo...
@@ -161,17 +211,16 @@ export default function PromoManagementCard() {
         </p>
       )}
 
-      {!isLoading && !loadError && promos.length === 0 && (
+      {!isLoading && !loadError && visiblePromos.length === 0 && (
         <p className="p-6 text-center text-sm text-black/40">
-          Belum ada kode promo. Klik &quot;Tambah Promo&quot; untuk membuat yang
-          pertama.
+          Belum ada promo di folder &quot;{activeFolder}&quot;.
         </p>
       )}
 
-      {!isLoading && !loadError && promos.length > 0 && (
+      {!isLoading && !loadError && visiblePromos.length > 0 && (
         <div className="overflow-x-auto">
           <table
-            className={cn(spaceMono.className, "w-full min-w-[720px] text-xs")}
+            className={cn(spaceMono.className, "w-full min-w-[820px] text-xs")}
           >
             <thead>
               <tr className="border-b-4 border-black bg-[#FDF6E9] text-left uppercase">
@@ -185,7 +234,7 @@ export default function PromoManagementCard() {
               </tr>
             </thead>
             <tbody>
-              {promos.map((promo) => {
+              {visiblePromos.map((promo) => {
                 const badge = getPromoBadge(promo);
                 return (
                   <tr
@@ -229,6 +278,13 @@ export default function PromoManagementCard() {
                         </button>
                         <button
                           type="button"
+                          onClick={() => setModalState({ mode: "move", promo })}
+                          className="border-2 border-black bg-white px-2 py-1 text-[10px] font-bold uppercase hover:bg-[#FDF6E9]"
+                        >
+                          Pindahkan
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => handleToggle(promo)}
                           className="border-2 border-black bg-white px-2 py-1 text-[10px] font-bold uppercase hover:bg-[#FDF6E9]"
                         >
@@ -256,11 +312,29 @@ export default function PromoManagementCard() {
         </div>
       )}
 
-      {modalState.mode !== "closed" && (
+      {modalState.mode === "create" && (
         <PromoFormModal
-          promo={modalState.mode === "edit" ? modalState.promo : null}
+          promo={null}
+          defaultFolder={activeFolder}
           onClose={() => setModalState({ mode: "closed" })}
           onSaved={handleSaved}
+        />
+      )}
+
+      {modalState.mode === "edit" && (
+        <PromoFormModal
+          promo={modalState.promo}
+          onClose={() => setModalState({ mode: "closed" })}
+          onSaved={handleSaved}
+        />
+      )}
+
+      {modalState.mode === "move" && (
+        <MovePromoModal
+          promo={modalState.promo}
+          existingFolders={folders}
+          onClose={() => setModalState({ mode: "closed" })}
+          onMoved={handleMoved}
         />
       )}
     </div>

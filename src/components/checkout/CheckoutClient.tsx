@@ -12,7 +12,7 @@ import {
 } from "react-icons/fa";
 import { CONTACT_INFO } from "@/libs/config/contact";
 import Button from "@/components/Button";
-import PromoInput from "@/components/checkout/PromoInput";
+import PromoInput from "@/components/promo/PromoInput";
 import PaymentStepper, {
   type PaymentStep,
 } from "@/components/checkout/PaymentStepper";

@@ -1,5 +1,5 @@
 import PageHeader from "@/components/dashboard/PageHeader";
-import PromoManagementCard from "@/components/dashboard/PromoManagementCard";
+import PromoManagementCard from "@/components/promo/PromoManagementCard";
 
 export default function PromoPage() {
   return (

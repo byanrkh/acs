@@ -8,26 +8,41 @@ import {
   updatePromo,
   type PromoAdminRow,
   type PromoFormInput,
-} from "@/libs/actions/promoAdmin";
+} from "@/libs/actions/promo/admin";
 import { SpecialGhotic, spaceMono } from "@/libs/Font";
 import { cn } from "@/libs/cn";
 
-// <input type="datetime-local"> butuh format "YYYY-MM-DDTHH:mm" tanpa
-// zona waktu / detik.
 function toDatetimeLocalValue(iso: string | null): string {
   if (!iso) return "";
   const date = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  if (Number.isNaN(date.getTime())) return "";
+
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
+
+  const get = (type: string) =>
+    parts.find((p) => p.type === type)?.value ?? "00";
+
+  return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
 }
 
 export default function PromoFormModal({
   promo,
+  defaultFolder,
   onClose,
   onSaved,
 }: {
   /** null = mode "Tambah", ada isinya = mode "Edit". */
   promo: PromoAdminRow | null;
+  /** Folder aktif saat tombol "+ Tambah Promo" ditekan (mode Tambah saja). */
+  defaultFolder?: string;
   onClose: () => void;
   onSaved: (promo: PromoAdminRow) => void;
 }) {
@@ -48,6 +63,7 @@ export default function PromoFormModal({
     toDatetimeLocalValue(promo?.end_date ?? null),
   );
   const [isActive, setIsActive] = useState(promo?.is_active ?? true);
+  const [folder, setFolder] = useState(promo?.folder ?? defaultFolder ?? "/");
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -64,6 +80,7 @@ export default function PromoFormModal({
       startDate,
       endDate,
       isActive,
+      folder,
     };
 
     startTransition(async () => {
@@ -109,6 +126,15 @@ export default function PromoFormModal({
             value={code}
             onChange={(e) => setCode(e.target.value.toUpperCase())}
             placeholder="MISAL: ACSHEMAT10"
+            required
+          />
+
+          <FormField
+            label="Folder"
+            name="folder"
+            value={folder}
+            onChange={(e) => setFolder(e.target.value)}
+            placeholder="/ atau /collab"
             required
           />
 

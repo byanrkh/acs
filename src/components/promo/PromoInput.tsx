@@ -5,7 +5,7 @@ import { FaTicketAlt } from "react-icons/fa";
 import {
   applyPromoToRegistration,
   removePromoFromRegistration,
-} from "@/libs/actions/promo";
+} from "@/libs/actions/promo/customer";
 import { spaceMono, SpecialGhotic } from "@/libs/Font";
 import { cn } from "@/libs/cn";
 

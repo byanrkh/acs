@@ -6,7 +6,7 @@ import { resend, EMAIL_FROM } from "@/libs/email/resend";
 import { buildSuccessEmailHtml } from "@/libs/email/successTemplate";
 import { generateQrCodeBuffer } from "@/libs/email/qrcode";
 import { logAuditEvent, logPaymentEvent } from "@/libs/actions/logs";
-import { incrementPromoUsageSafely } from "@/libs/actions/promo";
+import { incrementPromoUsageSafely } from "@/libs/actions/promo/customer";
 
 export type ApproveTransferResult =
   | { ok: true; bibNumber: string | null }

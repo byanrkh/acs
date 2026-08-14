@@ -14,6 +14,7 @@ export type PromoAdminRow = {
   start_date: string;
   end_date: string;
   is_active: boolean;
+  folder: string;
   created_at: string;
 };
 
@@ -25,9 +26,38 @@ export type PromoFormInput = {
   startDate: string; // ISO string dari <input type="datetime-local">
   endDate: string;
   isActive: boolean;
+  folder: string;
 };
 
 type ActionResult<T> = { ok: true; data: T } | { ok: false; error: string };
+
+// Indonesia gak pakai DST, jadi offset WIB selalu tetap +07:00.
+const JAKARTA_OFFSET = "+07:00";
+
+// <input type="datetime-local"> ngasih string TANPA timezone
+// (contoh: "2026-08-14T23:59"). String kayak gitu, kalau langsung
+// dilempar ke `new Date(...)`, bakal di-parse pakai timezone SERVER
+// yang jalanin kode ini (Vercel = UTC) -- BUKAN timezone browser admin.
+// Makanya dipaksa parse sebagai WIB dengan nempelin offset +07:00.
+function parseJakartaDatetimeLocal(value: string): Date | null {
+  if (!value) return null;
+  const date = new Date(`${value}:00${JAKARTA_OFFSET}`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+// "Folder" cuma path string biasa di kolom promos.folder -- gak ada tabel
+// folder terpisah. Root selalu "/", folder lain ditulis "/nama" atau
+// "/nama/sub". Fungsi ini yang jamin formatnya konsisten (selalu diawali
+// "/", gak ada trailing slash selain root, spasi dirapikan).
+function normalizeFolderPath(raw: string): string {
+  const trimmed = (raw ?? "").trim();
+  if (!trimmed || trimmed === "/") return "/";
+  const withLeadingSlash = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+  const withoutTrailingSlash = withLeadingSlash.replace(/\/+$/, "");
+  return withoutTrailingSlash || "/";
+}
+
+const FOLDER_PATTERN = /^\/[a-zA-Z0-9_\-/]*$/;
 
 async function requireAdmin() {
   const admin = await getAdminUser();
@@ -59,17 +89,24 @@ function validatePromoForm(input: PromoFormInput): string | null {
     return "Kuota (Max Uses) harus bilangan bulat lebih dari 0.";
   }
 
-  const start = new Date(input.startDate);
-  const end = new Date(input.endDate);
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+  const start = parseJakartaDatetimeLocal(input.startDate);
+  const end = parseJakartaDatetimeLocal(input.endDate);
+  if (!start || !end) {
     return "Tanggal mulai/berakhir tidak valid.";
   }
   if (end.getTime() <= start.getTime()) {
     return "Tanggal berakhir harus setelah tanggal mulai.";
   }
 
+  if (!FOLDER_PATTERN.test(normalizeFolderPath(input.folder))) {
+    return "Format folder tidak valid. Contoh yang benar: / atau /collab";
+  }
+
   return null;
 }
+
+const PROMO_COLUMNS =
+  "id, code, discount_type, discount_value, max_uses, current_uses, start_date, end_date, is_active, folder, created_at";
 
 export async function listPromos(): Promise<ActionResult<PromoAdminRow[]>> {
   const admin = await requireAdmin();
@@ -79,9 +116,7 @@ export async function listPromos(): Promise<ActionResult<PromoAdminRow[]>> {
 
   const { data, error } = await supabaseAdmin
     .from("promos")
-    .select(
-      "id, code, discount_type, discount_value, max_uses, current_uses, start_date, end_date, is_active, created_at",
-    )
+    .select(PROMO_COLUMNS)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -106,6 +141,9 @@ export async function createPromo(
   }
 
   const code = input.code.trim().toUpperCase();
+  const startDate = parseJakartaDatetimeLocal(input.startDate)!;
+  const endDate = parseJakartaDatetimeLocal(input.endDate)!;
+  const folder = normalizeFolderPath(input.folder);
 
   const { data, error } = await supabaseAdmin
     .from("promos")
@@ -114,13 +152,12 @@ export async function createPromo(
       discount_type: input.discountType,
       discount_value: input.discountValue,
       max_uses: input.maxUses,
-      start_date: new Date(input.startDate).toISOString(),
-      end_date: new Date(input.endDate).toISOString(),
+      start_date: startDate.toISOString(),
+      end_date: endDate.toISOString(),
       is_active: input.isActive,
+      folder,
     })
-    .select(
-      "id, code, discount_type, discount_value, max_uses, current_uses, start_date, end_date, is_active, created_at",
-    )
+    .select(PROMO_COLUMNS)
     .single();
 
   if (error || !data) {
@@ -134,8 +171,8 @@ export async function createPromo(
   await logAuditEvent({
     actorEmail: admin.email,
     action: "create_promo",
-    description: `Membuat kode promo "${data.code}" (${input.discountType === "percentage" ? `${input.discountValue}%` : `Rp${input.discountValue}`}, kuota ${input.maxUses})`,
-    metadata: { promo_id: data.id, code: data.code },
+    description: `Membuat kode promo "${data.code}" di folder "${folder}" (${input.discountType === "percentage" ? `${input.discountValue}%` : `Rp${input.discountValue}`}, kuota ${input.maxUses})`,
+    metadata: { promo_id: data.id, code: data.code, folder },
   });
 
   return { ok: true, data };
@@ -155,11 +192,6 @@ export async function updatePromo(
     return { ok: false, error: validationError };
   }
 
-  // Kuota (max_uses) tidak boleh diturunkan sampai di bawah pemakaian
-  // yang sudah terjadi -- kalau dipaksa, current_uses > max_uses dan
-  // melanggar CHECK constraint di DB (sengaja dibiarkan DB yang menolak
-  // sebagai lapisan terakhir, tapi kita cek dulu di sini biar pesan
-  // errornya jelas buat admin).
   const { data: existing, error: fetchError } = await supabaseAdmin
     .from("promos")
     .select("current_uses")
@@ -178,6 +210,9 @@ export async function updatePromo(
   }
 
   const code = input.code.trim().toUpperCase();
+  const startDate = parseJakartaDatetimeLocal(input.startDate)!;
+  const endDate = parseJakartaDatetimeLocal(input.endDate)!;
+  const folder = normalizeFolderPath(input.folder);
 
   const { data, error } = await supabaseAdmin
     .from("promos")
@@ -186,14 +221,13 @@ export async function updatePromo(
       discount_type: input.discountType,
       discount_value: input.discountValue,
       max_uses: input.maxUses,
-      start_date: new Date(input.startDate).toISOString(),
-      end_date: new Date(input.endDate).toISOString(),
+      start_date: startDate.toISOString(),
+      end_date: endDate.toISOString(),
       is_active: input.isActive,
+      folder,
     })
     .eq("id", promoId)
-    .select(
-      "id, code, discount_type, discount_value, max_uses, current_uses, start_date, end_date, is_active, created_at",
-    )
+    .select(PROMO_COLUMNS)
     .single();
 
   if (error || !data) {
@@ -212,6 +246,48 @@ export async function updatePromo(
   });
 
   return { ok: true, data };
+}
+
+// Dipanggil dari tombol "Pindahkan" di tiap baris promo. Cuma ganti kolom
+// folder -- gak nyentuh field lain, jadi aman dipanggil kapan pun tanpa
+// perlu validasi form lengkap.
+export async function movePromoToFolder(
+  promoId: string,
+  folder: string,
+): Promise<ActionResult<{ id: string; folder: string }>> {
+  const admin = await requireAdmin();
+  if (!admin) {
+    return { ok: false, error: "Sesi login sudah habis, silakan login ulang." };
+  }
+
+  const normalized = normalizeFolderPath(folder);
+  if (!FOLDER_PATTERN.test(normalized)) {
+    return {
+      ok: false,
+      error: "Format folder tidak valid. Contoh yang benar: / atau /collab",
+    };
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("promos")
+    .update({ folder: normalized })
+    .eq("id", promoId)
+    .select("id, code, folder")
+    .single();
+
+  if (error || !data) {
+    console.error("[movePromoToFolder] gagal pindahkan folder promo:", error);
+    return { ok: false, error: "Gagal memindahkan promo, coba lagi." };
+  }
+
+  await logAuditEvent({
+    actorEmail: admin.email,
+    action: "move_promo_folder",
+    description: `Memindahkan kode promo "${data.code}" ke folder "${normalized}"`,
+    metadata: { promo_id: data.id, code: data.code, folder: normalized },
+  });
+
+  return { ok: true, data: { id: data.id, folder: data.folder } };
 }
 
 export async function togglePromoActive(
@@ -263,10 +339,6 @@ export async function deletePromo(
     return { ok: false, error: "Promo tidak ditemukan." };
   }
 
-  // Aman dihapus walau sudah pernah dipakai -- registrations.promo_id
-  // pakai ON DELETE SET NULL, jadi data historis discount_amount /
-  // final_amount di registrasi lama TETAP UTUH, cuma referensi ke baris
-  // promos-nya yang hilang.
   const { error: deleteError } = await supabaseAdmin
     .from("promos")
     .delete()

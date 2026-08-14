@@ -6,7 +6,7 @@ import { buildSuccessEmailHtml } from "@/libs/email/successTemplate";
 import { parseOrderId } from "@/libs/midtrans/orderId";
 import { generateQrCodeBuffer } from "@/libs/email/qrcode";
 import { logPaymentEvent } from "@/libs/actions/logs";
-import { incrementPromoUsageSafely } from "@/libs/actions/promo";
+import { incrementPromoUsageSafely } from "@/libs/actions/promo/customer";
 
 export type RegistrationStatus = "pending_payment" | "confirmed" | "cancelled" | "expired";
 
