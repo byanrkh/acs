@@ -13,7 +13,7 @@ export default async function TransferCheckoutPage({
   const { data: registration } = await supabaseAdmin
     .from("registrations")
     .select(
-      "id, nama_lengkap, kategori, status, nomor_urut, bukti_transfer, discount_amount, final_amount, promos:promo_id ( code )",
+      "id, nama_lengkap, email, telepon, nisn, nik_terakhir, tempat_lahir, tanggal_lahir, jenis_kelamin, golongan_darah, riwayat_penyakit, kontak_darurat_nama, kontak_darurat_telepon, nama_bib, kategori, ukuran_jersey, status, nomor_urut, bukti_transfer, discount_amount, final_amount, promos:promo_id ( code )",
     )
     .eq("id", id)
     .single();
@@ -34,7 +34,20 @@ export default async function TransferCheckoutPage({
           registration={{
             id: registration.id,
             nama_lengkap: registration.nama_lengkap,
+            email: registration.email,
+            telepon: registration.telepon,
+            nisn: registration.nisn,
+            nik_terakhir: registration.nik_terakhir,
+            tempat_lahir: registration.tempat_lahir,
+            tanggal_lahir: registration.tanggal_lahir,
+            jenis_kelamin: registration.jenis_kelamin,
+            golongan_darah: registration.golongan_darah,
+            riwayat_penyakit: registration.riwayat_penyakit,
+            kontak_darurat_nama: registration.kontak_darurat_nama,
+            kontak_darurat_telepon: registration.kontak_darurat_telepon,
+            nama_bib: registration.nama_bib,
             kategori: registration.kategori,
+            ukuran_jersey: registration.ukuran_jersey,
             status: registration.status,
             nomor_urut: registration.nomor_urut,
             bukti_transfer: registration.bukti_transfer,

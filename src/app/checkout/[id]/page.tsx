@@ -15,7 +15,7 @@ export default async function CheckoutPage({
     supabaseAdmin
       .from("registrations")
       .select(
-        "id, nama_lengkap, email, kategori, ukuran_jersey, status, midtrans_order_id, payment_expires_at, bib_number, discount_amount, final_amount, promos:promo_id ( code )",
+        "id, nama_lengkap, email, telepon, nisn, nik_terakhir, tempat_lahir, tanggal_lahir, jenis_kelamin, golongan_darah, riwayat_penyakit, kontak_darurat_nama, kontak_darurat_telepon, nama_bib, kategori, ukuran_jersey, status, midtrans_order_id, payment_expires_at, bib_number, discount_amount, final_amount, promos:promo_id ( code )",
       )
       .eq("id", id)
       .single(),
@@ -49,6 +49,17 @@ export default async function CheckoutPage({
               id: registration.id,
               nama_lengkap: registration.nama_lengkap,
               email: registration.email,
+              telepon: registration.telepon,
+              nisn: registration.nisn,
+              nik_terakhir: registration.nik_terakhir,
+              tempat_lahir: registration.tempat_lahir,
+              tanggal_lahir: registration.tanggal_lahir,
+              jenis_kelamin: registration.jenis_kelamin,
+              golongan_darah: registration.golongan_darah,
+              riwayat_penyakit: registration.riwayat_penyakit,
+              kontak_darurat_nama: registration.kontak_darurat_nama,
+              kontak_darurat_telepon: registration.kontak_darurat_telepon,
+              nama_bib: registration.nama_bib,
               kategori: registration.kategori,
               ukuran_jersey: registration.ukuran_jersey,
               status: registration.status,

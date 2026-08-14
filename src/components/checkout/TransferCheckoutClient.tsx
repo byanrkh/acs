@@ -1,7 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { FaLandmark, FaExclamationTriangle, FaWhatsapp } from "react-icons/fa";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import {
+  FaLandmark,
+  FaExclamationTriangle,
+  FaInfoCircle,
+  FaWhatsapp,
+} from "react-icons/fa";
 import { CONTACT_INFO } from "@/libs/config/contact";
 import Button from "@/components/Button";
 import CopyButton from "@/components/copyButton";
@@ -10,6 +16,7 @@ import PaymentStepper, {
   type PaymentStep,
 } from "@/components/checkout/PaymentStepper";
 import PriceTicket, { type PriceRow } from "@/components/checkout/PriceTicket";
+import ParticipantDataCard from "@/components/checkout/ParticipantDataCard";
 import { getRegistrationFee } from "@/libs/config/pricing";
 import { BANK_TRANSFER_INFO } from "@/libs/config/bankTransfer";
 import { SpecialGhotic, spaceMono } from "@/libs/Font";
@@ -26,7 +33,20 @@ function formatRupiah(amount: number) {
 type Registration = {
   id: string;
   nama_lengkap: string;
+  email: string;
+  telepon: string;
+  nisn: string | null;
+  nik_terakhir: string | null;
+  tempat_lahir: string;
+  tanggal_lahir: string;
+  jenis_kelamin: "L" | "P";
+  golongan_darah: string;
+  riwayat_penyakit: string | null;
+  kontak_darurat_nama: string;
+  kontak_darurat_telepon: string;
+  nama_bib: string;
   kategori: "pelajar" | "umum";
+  ukuran_jersey: string;
   status: string;
   nomor_urut: number | null;
   bukti_transfer: string | null;
@@ -65,6 +85,23 @@ export default function TransferCheckoutClient({
 }: {
   registration: Registration;
 }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const [namaLengkap, setNamaLengkap] = useState(registration.nama_lengkap);
+
+  // Sama seperti di CheckoutClient.tsx (channel Midtrans) -- penanda dari
+  // submitRegistration ketika duplicate-check nemu pendaftaran lama dengan
+  // NISN/NIK yang sama, langsung diarahkan ke sini alih-alih bikin baris
+  // baru. Query dibuang begitu dibaca.
+  const [showResumedBanner, setShowResumedBanner] = useState(false);
+  useEffect(() => {
+    if (searchParams.get("resumed") !== "1") return;
+    setShowResumedBanner(true);
+    router.replace(`/checkout/transfer/${registration.id}`, { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [promoCode, setPromoCode] = useState(registration.promo_code);
   const [discountAmount, setDiscountAmount] = useState(
     registration.discount_amount,
@@ -76,6 +113,9 @@ export default function TransferCheckoutClient({
   const totalTransfer = finalAmount + uniqueCode;
 
   const canEditPromo = registration.status === "pending_payment";
+  const canEditParticipantData =
+    registration.status === "pending_payment" ||
+    registration.status === "expired";
   const isAwaitingAction =
     registration.status !== "confirmed" &&
     registration.status !== "waiting_verification";
@@ -112,7 +152,7 @@ export default function TransferCheckoutClient({
             : "Transfer & bayar"}
       </h1>
       <p className="mt-2 text-sm text-black/60">
-        {registration.nama_lengkap} · Kategori {registration.kategori}
+        {namaLengkap} · Kategori {registration.kategori}
       </p>
 
       <div className="mt-8 border-4 border-black bg-white p-5 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] sm:p-6">
@@ -120,6 +160,67 @@ export default function TransferCheckoutClient({
       </div>
 
       <div className="mt-6 space-y-6">
+        {showResumedBanner && (
+          <div className="flex items-start gap-3 border-4 border-black bg-[#FFD400] p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+            <FaInfoCircle className="mt-0.5 shrink-0 text-black" size={16} />
+            <div className="flex-1">
+              <p
+                className={cn(
+                  spaceMono.className,
+                  "text-xs font-bold uppercase tracking-tight text-black",
+                )}
+              >
+                Kamu sudah pernah daftar
+              </p>
+              <p className="mt-1 text-xs text-black/70">
+                NISN/NIK ini sudah pernah dipakai daftar sebelumnya, jadi kami
+                arahkan ke pendaftaran sebelumnya.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowResumedBanner(false)}
+              aria-label="Tutup pemberitahuan"
+              className="shrink-0 text-black/50 hover:text-black"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        <ParticipantDataCard
+          registrationId={registration.id}
+          kategori={registration.kategori}
+          identifierLabel={
+            registration.kategori === "pelajar"
+              ? "NISN"
+              : "4 digit terakhir NIK"
+          }
+          identifierValue={
+            registration.kategori === "pelajar"
+              ? (registration.nisn ?? "-")
+              : (registration.nik_terakhir ?? "-")
+          }
+          editable={canEditParticipantData}
+          data={{
+            namaLengkap: registration.nama_lengkap,
+            email: registration.email,
+            telepon: registration.telepon,
+            tempatLahir: registration.tempat_lahir,
+            tanggalLahir: registration.tanggal_lahir,
+            jenisKelamin: registration.jenis_kelamin,
+            golonganDarah: registration.golongan_darah,
+            riwayatPenyakit: registration.riwayat_penyakit,
+            kontakDaruratNama: registration.kontak_darurat_nama,
+            kontakDaruratTelepon: registration.kontak_darurat_telepon,
+            ukuranJersey: registration.ukuran_jersey,
+            namaBib: registration.nama_bib,
+          }}
+          onUpdated={(patch) => {
+            setNamaLengkap(patch.namaLengkap);
+          }}
+        />
+
         {registration.status === "confirmed" && (
           <div className="border-4 border-black bg-[#1F4B33] p-5 text-center text-white">
             <p
