@@ -497,7 +497,6 @@ export default function RegistrationForm() {
                   >
                     Ukuran jersey
                   </label>
-                  <SizeChartModal />
                 </div>
                 <div className="mt-2">
                   <SelectField
