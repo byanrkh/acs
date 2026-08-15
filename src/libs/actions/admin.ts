@@ -54,6 +54,21 @@ const SCAN_SELECT_FIELDS =
 
 const UUID_PATTERN = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 
+// NIK itu data pribadi sensitif -- cuma dev@acs.id yang boleh lihat nilai
+// aslinya. Admin lain tetap bisa lihat semua data peserta lainnya seperti
+// biasa, tapi kolom NIK-nya disamarkan.
+const NIK_VISIBLE_EMAIL = "dev@acs.id";
+
+function maskNik<T extends { nik_terakhir: string | null }>(
+  reg: T,
+  viewerEmail: string | null | undefined,
+): T {
+  if (viewerEmail === NIK_VISIBLE_EMAIL || reg.nik_terakhir === null) {
+    return reg;
+  }
+  return { ...reg, nik_terakhir: "🔒 Khusus dev@acs.id" };
+}
+
 // QR di email isinya URL "https://.../admin/validasi/<uuid>". Fungsi ini
 // narik UUID-nya keluar, jadi tetep jalan walau nanti URL-nya diubah,
 // atau kalau suatu saat QR isinya UUID mentah aja.
@@ -95,7 +110,7 @@ export async function lookupRegistrationByScan(rawScanValue: string): Promise<Sc
     };
   }
 
-  return { ok: true, registration };
+  return { ok: true, registration: maskNik(registration, admin.email) };
 }
 
 // --- Deteksi & normalisasi buat input manual (email ATAU nomor HP) ---
@@ -172,7 +187,10 @@ export async function lookupRegistrationByContact(
     };
   }
 
-  return { ok: true, registrations };
+  return {
+    ok: true,
+    registrations: registrations.map((reg) => maskNik(reg, admin.email)),
+  };
 }
 
 export async function markRacePackTaken(registrationId: string) {

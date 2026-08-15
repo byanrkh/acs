@@ -12,10 +12,27 @@ import RegistrationsTable, {
 // (final_amount ikut dipakai buat hitung stat pendapatan).
 type RealtimeRegistration = Registration & { final_amount: number };
 
+// NIK itu data pribadi sensitif -- cuma dev@acs.id yang boleh lihat nilai
+// aslinya. Update dari channel realtime bawa data mentah dari DB (ga lewat
+// masking server), jadi wajib disamarkan lagi di sini juga.
+const NIK_VISIBLE_EMAIL = "dev@acs.id";
+
+function maskNik(
+  row: RealtimeRegistration,
+  viewerEmail: string,
+): RealtimeRegistration {
+  if (viewerEmail === NIK_VISIBLE_EMAIL || row.nik_terakhir === null) {
+    return row;
+  }
+  return { ...row, nik_terakhir: "🔒 Khusus dev@acs.id" };
+}
+
 export default function DashboardOverview({
   initialRegistrations,
+  viewerEmail,
 }: {
   initialRegistrations: RealtimeRegistration[];
+  viewerEmail: string;
 }) {
   const [rows, setRows] = useState(initialRegistrations);
   const [isLive, setIsLive] = useState(false);
@@ -40,7 +57,10 @@ export default function DashboardOverview({
             return;
           }
 
-          const newRow = payload.new as RealtimeRegistration;
+          const newRow = maskNik(
+            payload.new as RealtimeRegistration,
+            viewerEmail,
+          );
           if (!newRow?.id) return;
 
           setRows((prev) => {
@@ -61,7 +81,7 @@ export default function DashboardOverview({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [viewerEmail]);
 
   const stats = useMemo(() => {
     return {

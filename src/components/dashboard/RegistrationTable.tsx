@@ -196,7 +196,7 @@ function DetailPanel({ r }: { r: Registration }) {
           <span className="capitalize">{r.kategori}</span>
         </DetailField>
         <DetailField label="Nik/Nisn">
-          <span className="capitalize">
+          <span className={r.kategori === "pelajar" ? "capitalize" : ""}>
             {r.kategori === "pelajar" ? r.nisn : r.nik_terakhir}
           </span>
         </DetailField>
