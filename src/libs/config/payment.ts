@@ -1,0 +1,1 @@
+export const PAYMENT_DURATION_HOURS = 3;

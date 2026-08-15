@@ -48,8 +48,8 @@ function validatePayload(data: RegistrationPayload): RegistrationResult | null {
   if (data.kategori === "pelajar" && !/^\d{10}$/.test(data.nisn ?? "")) {
     return { ok: false, error: "NISN wajib 10 digit angka.", field: "nisn" };
   }
-  if (data.kategori === "umum" && !/^\d{4}$/.test(data.nikTerakhir ?? "")) {
-    return { ok: false, error: "4 digit terakhir NIK tidak valid.", field: "nikTerakhir" };
+  if (data.kategori === "umum" && !/^\d{16}$/.test(data.nikTerakhir ?? "")) {
+    return { ok: false, error: "NIK tidak valid, wajib 16 digit angka.", field: "nikTerakhir" };
   }
   if ((data.namaBib ?? "").length > 12) {
     return { ok: false, error: "Nama di BIB maksimal 12 karakter.", field: "namaBib" };
@@ -60,9 +60,9 @@ function validatePayload(data: RegistrationPayload): RegistrationResult | null {
 // ============================================================
 // DUPLICATE PREVENTION
 // ============================================================
-// Identifier utama = NISN (kategori pelajar) atau 4 digit terakhir NIK
+// Identifier utama = NISN (kategori pelajar) atau NIK lengkap (umum).
 // (kategori umum) -- keduanya berfungsi sebagai "identifier" yang sama,
-// cuma beda kolom tergantung kategori. Karena nik_terakhir cuma 4 digit
+// cuma beda kolom tergantung kategori. Sekarang nik_terakhir menyimpan NIK
 // (rawan tabrakan/kebetulan sama), kita WAJIB tambahin nama lengkap sebagai
 // pembanding kedua supaya nggak salah nganggep dua orang beda jadi orang
 // yang sama.
@@ -105,7 +105,7 @@ async function findDuplicateRegistration(
   identifierValue: string,
 ): Promise<DuplicateCheckResult> {
   // Kolom identifier beda tergantung kategori -- pelajar pakai NISN, umum
-  // pakai 4 digit terakhir NIK. Keduanya diperlakukan sebagai "identifier
+  // pakai NIK lengkap (16 digit). Keduanya diperlakukan sebagai "identifier
   // utama" yang sama secara konsep, cuma beda kolom penyimpanan.
   //
   // CATATAN: sengaja HANYA cocokkan kategori + NISN/NIK -- tidak dibandingkan

@@ -191,11 +191,7 @@ export default function TransferCheckoutClient({
         <ParticipantDataCard
           registrationId={registration.id}
           kategori={registration.kategori}
-          identifierLabel={
-            registration.kategori === "pelajar"
-              ? "NISN"
-              : "4 digit terakhir NIK"
-          }
+          identifierLabel={registration.kategori === "pelajar" ? "NISN" : "NIK"}
           identifierValue={
             registration.kategori === "pelajar"
               ? (registration.nisn ?? "-")

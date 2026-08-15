@@ -69,7 +69,7 @@ export default function ParticipantDataCard({
 }: {
   registrationId: string;
   kategori: "pelajar" | "umum";
-  /** "NISN" untuk pelajar, "4 digit terakhir NIK" untuk umum. */
+  /** "NISN" untuk pelajar, "NIK" untuk umum. */
   identifierLabel: string;
   /** Nilai NISN/NIK -- read-only, tidak pernah dikirim ke form edit. */
   identifierValue: string;

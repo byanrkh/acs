@@ -82,8 +82,8 @@ function validateStep1(form: FormState): FormErrors {
   if (form.kategori === "pelajar" && !/^\d{10}$/.test(form.nisn.trim())) {
     errors.nisn = "NISN wajib 10 digit angka.";
   }
-  if (form.kategori === "umum" && !/^\d{4}$/.test(form.nikTerakhir.trim())) {
-    errors.nikTerakhir = "Wajib diisi 4 digit angka.";
+  if (form.kategori === "umum" && !/^\d{16}$/.test(form.nikTerakhir.trim())) {
+    errors.nikTerakhir = "Wajib diisi 16 digit angka (NIK lengkap).";
   }
   if (!form.namaLengkap.trim())
     errors.namaLengkap = "Nama lengkap wajib diisi.";
@@ -339,12 +339,12 @@ export default function RegistrationForm() {
 
               {form.kategori === "umum" && (
                 <FormField
-                  label="4 digit terakhir NIK"
+                  label="NIK (16 digit)"
                   name="nikTerakhir"
                   type="text"
                   inputMode="numeric"
-                  maxLength={4}
-                  placeholder="Contoh: 0421"
+                  maxLength={16}
+                  placeholder="Contoh: 3273010101990001"
                   value={form.nikTerakhir}
                   onChange={handleInputChange}
                   error={errors.nikTerakhir}

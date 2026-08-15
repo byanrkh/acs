@@ -704,7 +704,7 @@ export default function ScanPage() {
                         />
                       ) : (
                         <DetailField
-                          label="NIK (4 digit akhir)"
+                          label="NIK"
                           value={result.registration.nik_terakhir ?? "-"}
                         />
                       )}
