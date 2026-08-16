@@ -66,7 +66,7 @@ function maskNik<T extends { nik_terakhir: string | null }>(
   if (viewerEmail === NIK_VISIBLE_EMAIL || reg.nik_terakhir === null) {
     return reg;
   }
-  return { ...reg, nik_terakhir: "🔒 Khusus dev@acs.id" };
+  return { ...reg, nik_terakhir: reg.nik_terakhir.slice(-4) };
 }
 
 // QR di email isinya URL "https://.../admin/validasi/<uuid>". Fungsi ini
