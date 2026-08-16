@@ -5,6 +5,7 @@ import { supabaseAdmin } from "@/libs/supabase/server";
 import { submitTransferRegistration } from "@/libs/actions/registrationTransfer";
 import { createPaymentTransaction } from "@/libs/actions/checkout";
 import { getRegistrationFee } from "@/libs/config/pricing";
+import { CONFIRMED_REGISTRATION_QUOTA } from "@/libs/config/capacity";
 import { resend, EMAIL_FROM } from "@/libs/email/resend";
 import { buildInvoiceEmailHtml } from "@/libs/email/invoiceTemplate";
 import { buildTransferInvoiceEmailHtml } from "@/libs/email/transferInvoiceTemplate";
@@ -167,6 +168,38 @@ function buildCheckoutRedirectPath(match: DuplicateRegistrationMatch): string {
     : `/checkout/${match.id}?resumed=1`;
 }
 
+// ============================================================
+// KUOTA PENDAFTARAN
+// ============================================================
+// Dihitung dari status "confirmed" doang (sudah lunas), BUKAN dari total
+// baris registrations -- baris pending_payment/expired yang gagal/nggak
+// pernah dibayar tidak boleh ikut menutup kuota. Dipakai di dua tempat:
+// 1. Di sini (submitRegistration) sebagai penjaga sisi server yang tidak
+//    bisa di-bypass, karena halaman /registration statis bisa saja masih
+//    ke-cache/ke-render sebelum kuota penuh.
+// 2. Di app/(root)/registration/page.tsx buat nampilin pesan "pendaftaran
+//    ditutup" ke user, gantiin form-nya, biar user nggak isi form sia-sia.
+export async function getConfirmedRegistrationCount(): Promise<number> {
+  const { count, error } = await supabaseAdmin
+    .from("registrations")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "confirmed");
+
+  if (error) {
+    console.error("[getConfirmedRegistrationCount] gagal hitung kuota:", error);
+    // Fail-open: kalau query kuota gagal, jangan sampai nge-block semua
+    // pendaftaran cuma gara-gara error jaringan/DB sesaat.
+    return 0;
+  }
+
+  return count ?? 0;
+}
+
+export async function isRegistrationClosed(): Promise<boolean> {
+  const confirmedCount = await getConfirmedRegistrationCount();
+  return confirmedCount >= CONFIRMED_REGISTRATION_QUOTA;
+}
+
 export async function submitRegistration(
   data: RegistrationPayload
 ): Promise<RegistrationResult> {
@@ -206,6 +239,17 @@ export async function submitRegistration(
       ok: true,
       registrationId: duplicateCheck.match.id,
       redirectPath: buildCheckoutRedirectPath(duplicateCheck.match),
+    };
+  }
+
+  // Cek kuota SETELAH duplicate check lolos -- kalau ternyata ini peserta
+  // lama yang mau lanjut checkout registration-nya sendiri (redirectPath di
+  // atas), dia tidak boleh ikut diblokir cuma karena kuota sekarang sudah
+  // penuh. Yang diblokir di sini murni baris baru/peserta baru saja.
+  if (await isRegistrationClosed()) {
+    return {
+      ok: false,
+      error: "Pendaftaran sudah ditutup karena kuota peserta sudah penuh.",
     };
   }
 

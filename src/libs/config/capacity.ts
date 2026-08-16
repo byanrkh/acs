@@ -1,0 +1,1 @@
+export const CONFIRMED_REGISTRATION_QUOTA = 40;
