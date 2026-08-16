@@ -24,7 +24,7 @@ function maskNik(
   if (viewerEmail === NIK_VISIBLE_EMAIL || row.nik_terakhir === null) {
     return row;
   }
-  return { ...row, nik_terakhir: "🔒 Khusus dev@acs.id" };
+  return { ...row, nik_terakhir: row.nik_terakhir.slice(-10) };
 }
 
 export default function DashboardOverview({

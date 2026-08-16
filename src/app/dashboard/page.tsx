@@ -32,7 +32,7 @@ export default async function DashboardPage() {
   const visibleRegistrations = (registrations ?? []).map((r) =>
     canSeeNik || r.nik_terakhir === null
       ? r
-      : { ...r, nik_terakhir: "🔒 Khusus dev@acs.id" },
+      : { ...r, nik_terakhir: "******" + r.nik_terakhir.slice(-10) },
   );
 
   return (
