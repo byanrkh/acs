@@ -132,9 +132,11 @@ const POLL_INTERVAL_MS = 5000;
 export default function CheckoutClient({
   registration,
   hasPaymentMethod,
+  quotaFull,
 }: {
   registration: Registration;
   hasPaymentMethod: boolean;
+  quotaFull: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -229,6 +231,13 @@ export default function CheckoutClient({
   }, [waitingConfirmation]);
 
   function handlePay() {
+    if (quotaFull) {
+      setErrorMessage(
+        "Mohon maaf, kuota peserta sudah penuh (200 peserta). Pendaftaran ini tidak dapat dilanjutkan.",
+      );
+      return;
+    }
+
     if (status === "expired") {
       setErrorMessage(
         "Pendaftaran ini sudah kedaluwarsa. Silakan daftar ulang lewat halaman Pendaftaran.",
@@ -562,7 +571,23 @@ export default function CheckoutClient({
               </p>
             )}
 
-            {waitingConfirmation ? (
+            {quotaFull ? (
+              <div className="border-4 border-[#D91E36] bg-[#D91E36]/10 p-5 text-center">
+                <p
+                  className={cn(
+                    SpecialGhotic.className,
+                    "uppercase tracking-tight text-[#D91E36]",
+                  )}
+                >
+                  Kuota peserta sudah penuh
+                </p>
+                <p className="mt-1 text-sm text-black/70">
+                  Mohon maaf, kuota 200 peserta sudah tercapai sebelum
+                  pembayaranmu selesai diproses. Hubungi panitia melalui halaman
+                  Kontak bila ada pertanyaan.
+                </p>
+              </div>
+            ) : waitingConfirmation ? (
               <div className="border-4 border-black bg-white p-5 text-center shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
                 <p
                   className={cn(

@@ -4,7 +4,7 @@ import PageHero from "@/components/PageHero";
 import RegistrationForm from "@/components/RegistrationForm";
 import { spaceMono } from "@/libs/Font";
 import { cn } from "@/libs/cn";
-import { isRegistrationClosed } from "@/libs/actions/registration";
+import { isRegistrationClosed } from "@/libs/actions/capacity";
 
 export const metadata: Metadata = {
   title: "Registration — ACS 2026: Archipelapace",

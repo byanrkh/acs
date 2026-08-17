@@ -3,6 +3,7 @@ import Container from "@/components/Container";
 import { supabaseAdmin } from "@/libs/supabase/server";
 import { getEnabledPaymentMethods } from "@/libs/actions/paymentSettings";
 import CheckoutClient from "@/components/checkout/CheckoutClient";
+import { isRegistrationClosed } from "@/libs/actions/capacity";
 
 export default async function CheckoutPage({
   params,
@@ -11,16 +12,31 @@ export default async function CheckoutPage({
 }) {
   const { id } = await params;
 
-  const [{ data: registration }, enabledPaymentMethods] = await Promise.all([
-    supabaseAdmin
-      .from("registrations")
-      .select(
-        "id, nama_lengkap, email, telepon, nisn, nik_terakhir, tempat_lahir, tanggal_lahir, jenis_kelamin, golongan_darah, riwayat_penyakit, kontak_darurat_nama, kontak_darurat_telepon, nama_bib, kategori, ukuran_jersey, status, midtrans_order_id, payment_expires_at, bib_number, discount_amount, final_amount, promos:promo_id ( code )",
-      )
-      .eq("id", id)
-      .single(),
-    getEnabledPaymentMethods(),
-  ]);
+  // const [{ data: registration }, enabledPaymentMethods, quotaFull] =
+  //   await Promise.all([
+  //     supabaseAdmin
+  //       .from("registrations")
+  //       .select(
+  //         "id, nama_lengkap, email, telepon, nisn, nik_terakhir, tempat_lahir, tanggal_lahir, jenis_kelamin, golongan_darah, riwayat_penyakit, kontak_darurat_nama, kontak_darurat_telepon, nama_bib, kategori, ukuran_jersey, status, midtrans_order_id, payment_expires_at, bib_number, discount_amount, final_amount, promos:promo_id ( code )",
+  //       )
+  //       .eq("id", id)
+  //       .single(),
+  //     getEnabledPaymentMethods(),
+  //     isRegistrationClosed(),
+  //   ]);
+
+  const [{ data: registration }, enabledPaymentMethods, quotaFull] =
+    await Promise.all([
+      supabaseAdmin
+        .from("registrations")
+        .select(
+          "id, nama_lengkap, email, telepon, nisn, nik_terakhir, tempat_lahir, tanggal_lahir, jenis_kelamin, golongan_darah, riwayat_penyakit, kontak_darurat_nama, kontak_darurat_telepon, nama_bib, kategori, ukuran_jersey, status, midtrans_order_id, payment_expires_at, bib_number, discount_amount, final_amount, promos:promo_id ( code )",
+        )
+        .eq("id", id)
+        .single(),
+      getEnabledPaymentMethods(),
+      isRegistrationClosed(),
+    ]);
 
   if (!registration) {
     notFound();
@@ -37,6 +53,7 @@ export default async function CheckoutPage({
         <div className="mx-auto max-w-lg">
           <CheckoutClient
             hasPaymentMethod={enabledPaymentMethods.length > 0}
+            quotaFull={quotaFull}
             registration={{
               id: registration.id,
               nama_lengkap: registration.nama_lengkap,

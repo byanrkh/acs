@@ -16,6 +16,7 @@ import {
 } from "@/libs/actions/paymentSettings";
 import { PAYMENT_DURATION_HOURS } from "@/libs/config/payment";
 import type { MidtransSnapTransactionResponse } from "midtrans-client";
+import { isRegistrationClosed } from "@/libs/actions/capacity";
 
 // Batas waktu bayar (3 jam) didefinisikan di libs/config/payment.ts, BUKAN
 // di file ini -- karena file ini punya directive "use server" di baris
@@ -88,6 +89,14 @@ export async function createPaymentTransaction(
       ok: false,
       error:
         "Pendaftaran ini sudah kedaluwarsa dan tidak bisa dibayar lagi. Silakan daftar ulang lewat halaman Pendaftaran.",
+    };
+  }
+
+  if (await isRegistrationClosed()) {
+    return {
+      ok: false,
+      error:
+        "Mohon maaf, kuota peserta sudah penuh (200 peserta) sebelum pembayaranmu diproses. Pendaftaran ini tidak dapat dilanjutkan.",
     };
   }
 
