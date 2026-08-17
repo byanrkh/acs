@@ -14,9 +14,15 @@ import {
   getEnabledPaymentMethods,
   type PaymentMethodId,
 } from "@/libs/actions/paymentSettings";
+import { PAYMENT_DURATION_HOURS } from "@/libs/config/payment";
 import type { MidtransSnapTransactionResponse } from "midtrans-client";
 
-const PAYMENT_DURATION_HOURS = 24;
+// Batas waktu bayar (3 jam) didefinisikan di libs/config/payment.ts, BUKAN
+// di file ini -- karena file ini punya directive "use server" di baris
+// paling atas, dan Next.js CUMA mengizinkan file "use server" meng-export
+// async function, tidak boleh meng-export const/value biasa (itu yang bikin
+// error build "Only async functions are allowed to be exported in a 'use
+// server' file"). Constant-nya diimpor dari sana kalau dibutuhkan di sini.
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
 // Snap punya ID payment channel versinya sendiri (BEDA dari payment_type

@@ -69,14 +69,20 @@ function validatePayload(data: RegistrationPayload): RegistrationResult | null {
 // yang sama.
 //
 // Status yang dianggap "masih relevan" untuk dicek (bukan slot kosong):
-// pending_payment, expired (diperlakukan sama seperti pending_payment --
-// peserta masih bisa lanjut bayar/registrasi yang sama), waiting_verification,
-// dan confirmed. Baris dengan status "cancelled" TIDAK dihitung sebagai
-// duplikat (sudah dibatalkan, dianggap slot kosong -- user boleh daftar
-// ulang dari nol).
+// pending_payment, waiting_verification, dan confirmed. Baris dengan status
+// "cancelled" TIDAK dihitung sebagai duplikat (sudah dibatalkan, dianggap
+// slot kosong -- user boleh daftar ulang dari nol).
+//
+// PENTING: "expired" SENGAJA TIDAK dimasukkan ke sini. Begitu sebuah
+// registration berstatus expired (waktu bayar 3 jam sudah lewat, lihat
+// PAYMENT_DURATION_HOURS di libs/actions/checkout.ts), NISN/NIK yang dipakai
+// di registration itu dianggap "bebas" lagi -- peserta boleh isi form dari
+// awal pakai NISN/NIK yang sama, dan itu akan membuat baris registration
+// BARU (bukan diarahkan balik ke checkout lama yang sudah expired). Data
+// registration lama yang expired tetap tersimpan apa adanya di database,
+// cuma sudah tidak dianggap "aktif" lagi untuk keperluan pengecekan ini.
 const ACTIVE_STATUSES_FOR_DUPLICATE_CHECK = [
   "pending_payment",
-  "expired",
   "waiting_verification",
   "confirmed",
 ];
@@ -88,7 +94,6 @@ const DUPLICATE_STATUS_PRIORITY = [
   "confirmed",
   "waiting_verification",
   "pending_payment",
-  "expired",
 ];
 
 type DuplicateRegistrationMatch = {
@@ -118,7 +123,7 @@ async function findDuplicateRegistration(
 
   const { data: candidates, error } = await supabaseAdmin
     .from("registrations")
-    .select("id, status, nomor_urut")
+    .select("id, status, nomor_urut, payment_expires_at")
     .eq("kategori", kategori)
     .eq(identifierColumn, identifierValue)
     .in("status", ACTIVE_STATUSES_FOR_DUPLICATE_CHECK);
@@ -135,7 +140,37 @@ async function findDuplicateRegistration(
     return { ok: true, match: null };
   }
 
-  const sorted = [...candidates].sort(
+  // Lazy-expire: kandidat berstatus "pending_payment" yang batas waktu
+  // bayarnya (payment_expires_at) sudah lewat TAPI status di database belum
+  // sempat berubah jadi "expired" (karena belum ada yang membuka halaman
+  // checkout lamanya untuk memicu checkAndExpireIfPastDeadline). Tanpa ini,
+  // peserta yang belum bayar > 3 jam dan LANGSUNG isi form lagi (tanpa buka
+  // link checkout lamanya dulu) akan tetap ke-block, padahal seharusnya
+  // NISN/NIK-nya sudah bebas dipakai lagi. Jadi di sini kita expire-kan
+  // dulu baris lama tsb, lalu keluarkan dari daftar kandidat "aktif".
+  const stillActiveCandidates: typeof candidates = [];
+  for (const candidate of candidates) {
+    const isPastDeadline =
+      candidate.status === "pending_payment" &&
+      candidate.payment_expires_at &&
+      new Date(candidate.payment_expires_at as string).getTime() < Date.now();
+
+    if (isPastDeadline) {
+      await supabaseAdmin
+        .from("registrations")
+        .update({ status: "expired" })
+        .eq("id", candidate.id);
+      continue;
+    }
+
+    stillActiveCandidates.push(candidate);
+  }
+
+  if (stillActiveCandidates.length === 0) {
+    return { ok: true, match: null };
+  }
+
+  const sorted = [...stillActiveCandidates].sort(
     (a, b) =>
       DUPLICATE_STATUS_PRIORITY.indexOf(a.status) -
       DUPLICATE_STATUS_PRIORITY.indexOf(b.status),

@@ -25,6 +25,8 @@ export type Registration = {
   nik_terakhir: string | null;
 };
 
+export type StatusOption = { value: string; label: string };
+
 const STATUS_LABEL: Record<string, string> = {
   pending_payment: "Menunggu bayar",
   confirmed: "Terkonfirmasi",
@@ -38,6 +40,16 @@ const STATUS_COLOR: Record<string, string> = {
   cancelled: "bg-[#D91E36] text-white",
   expired: "bg-black/20",
 };
+
+// Dipakai kalau parent ga ngirim `statusOptions` sendiri — daftar lengkap
+// semua status yang ada di sistem.
+const DEFAULT_STATUS_OPTIONS: StatusOption[] = [
+  { value: "semua", label: "Semua status" },
+  { value: "pending_payment", label: "Menunggu bayar" },
+  { value: "confirmed", label: "Terkonfirmasi" },
+  { value: "expired", label: "Kedaluwarsa" },
+  { value: "cancelled", label: "Dibatalkan" },
+];
 
 function formatDateTime(iso: string | null) {
   return iso
@@ -249,9 +261,22 @@ function DetailPanel({ r }: { r: Registration }) {
 export default function RegistrationsTable({
   registrations,
   isLive,
+  title = "Data Peserta",
+  statusOptions = DEFAULT_STATUS_OPTIONS,
+  headerAccent = "bg-[#FDF6E9]",
 }: {
   registrations: Registration[];
   isLive: boolean;
+  // Judul tabel — dipakai buat bedain tabel "Peserta Aktif" vs "Kedaluwarsa
+  // & Dibatalkan" saat dipisah di DashboardOverview.
+  title?: string;
+  // Opsi dropdown filter status. Default-nya semua status, tapi tiap
+  // instance tabel bisa dikasih subset-nya sendiri (mis. tabel aktif cuma
+  // punya opsi confirmed/pending_payment).
+  statusOptions?: StatusOption[];
+  // Warna background strip header, biar tabel "bermasalah" (expired/
+  // cancelled) kelihatan beda sekilas dari tabel peserta aktif.
+  headerAccent?: string;
 }) {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("semua");
@@ -322,7 +347,15 @@ export default function RegistrationsTable({
 
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Peserta");
-    XLSX.writeFile(workbook, `peserta-acs-2026-${Date.now()}.xlsx`);
+    const fileSlug = title
+      .toLowerCase()
+      .normalize("NFKD")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "");
+    XLSX.writeFile(
+      workbook,
+      `${fileSlug || "peserta"}-acs-2026-${Date.now()}.xlsx`,
+    );
   }
 
   function handleResend(id: string) {
@@ -367,14 +400,19 @@ export default function RegistrationsTable({
 
   return (
     <div className="border-4 border-black bg-white shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
-      <div className="flex flex-col gap-4 border-b-4 border-black bg-[#FDF6E9] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      <div
+        className={cn(
+          "flex flex-col gap-4 border-b-4 border-black px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6",
+          headerAccent,
+        )}
+      >
         <h1
           className={cn(
             SpecialGhotic.className,
             "text-lg uppercase tracking-tight sm:text-xl",
           )}
         >
-          Data Peserta ({filtered.length})
+          {title} ({filtered.length})
         </h1>
         <div className="flex flex-wrap items-center gap-3">
           <span
@@ -417,22 +455,24 @@ export default function RegistrationsTable({
             "border-4 border-black bg-white px-3 py-2 text-xs uppercase",
           )}
         >
-          <option value="semua">Semua status</option>
-          <option value="pending_payment">Menunggu bayar</option>
-          <option value="confirmed">Terkonfirmasi</option>
-          <option value="cancelled">Dibatalkan</option>
-          <option value="expired">Kedaluwarsa</option>
+          {statusOptions.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
         </select>
       </div>
 
-      {/* Tabel — desktop. Klik baris buat buka panel detail lengkap ala audit log. */}
-      <div className="hidden overflow-x-auto border-t-4 border-black sm:block">
+      {/* Tabel — desktop. Tinggi dibatasi & scroll di dalam tabel sendiri
+          (bukan halaman) biar admin ga perlu scroll panjang buat lihat
+          seluruh data. Header ikut sticky pas discroll. */}
+      <div className="hidden max-h-[65vh] overflow-auto border-t-4 border-black sm:block">
         <table className="w-full min-w-[1150px] text-left text-sm">
           <thead>
             <tr
               className={cn(
                 spaceMono.className,
-                "border-b-4 border-black bg-black text-[10px] uppercase tracking-widest text-white",
+                "sticky top-0 z-10 border-b-4 border-black bg-black text-[10px] uppercase tracking-widest text-white",
               )}
             >
               <th className="w-8 px-3 py-3" />
@@ -547,8 +587,9 @@ export default function RegistrationsTable({
         </table>
       </div>
 
-      {/* Card — mobile: ringkas seperti biasa, diketuk buat buka panel detail lengkap */}
-      <div className="flex max-h-[520px] flex-col overflow-hidden border-t-4 border-black sm:hidden">
+      {/* Card — mobile: ringkas seperti biasa, diketuk buat buka panel detail lengkap.
+          Tinggi dibatasi relatif ke viewport biar konsisten sama versi desktop. */}
+      <div className="flex max-h-[65vh] flex-col overflow-hidden border-t-4 border-black sm:hidden">
         <div className="divide-y-2 divide-black/10 overflow-y-auto">
           {filtered.map((r) => {
             const isOpen = expandedId === r.id;
