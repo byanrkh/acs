@@ -171,7 +171,7 @@ function StatBadge({
       className={cn(
         spaceMono.className,
         "inline-flex items-center gap-1 border-2 border-black px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-widest",
-        positive ? "bg-black text-white" : "bg-white text-black",
+        positive ? "bg-[#7ED957] text-black" : "bg-white text-black",
       )}
     >
       <IconTrendUp className="h-2.5 w-2.5" />
@@ -222,8 +222,8 @@ export default function StatsCards({ stats }: { stats: Stats }) {
   return (
     <div className="space-y-3 sm:space-y-4">
       {/* Kartu unggulan: Terkonfirmasi */}
-      <div className="group relative overflow-hidden border-4 border-black bg-[#7ED957] p-4 text-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[9px_9px_0px_0px_rgba(0,0,0,1)] sm:p-6">
-        <TicketNotch tone="border-black bg-[#7ED957]" />
+      <div className="group relative overflow-hidden border-4 border-black p-4 text-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[9px_9px_0px_0px_rgba(0,0,0,1)] sm:p-6">
+        <TicketNotch tone="border-black bg-[#fff]" />
         <div className="flex items-start justify-between">
           <div>
             <p
