@@ -41,8 +41,6 @@ const STATUS_COLOR: Record<string, string> = {
   expired: "bg-black/20",
 };
 
-// Dipakai kalau parent ga ngirim `statusOptions` sendiri — daftar lengkap
-// semua status yang ada di sistem.
 const DEFAULT_STATUS_OPTIONS: StatusOption[] = [
   { value: "semua", label: "Semua status" },
   { value: "pending_payment", label: "Menunggu bayar" },
@@ -61,7 +59,6 @@ function formatDateTime(iso: string | null) {
     : "-";
 }
 
-// Salin teks singkat ke clipboard, dipakai buat ID / email / telepon di panel detail.
 function CopyChip({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
 
@@ -79,7 +76,7 @@ function CopyChip({ value }: { value: string }) {
       try {
         document.execCommand("copy");
       } catch {
-        // no-op — kalau ini gagal juga, biarin user salin manual.
+        // ...
       }
       document.body.removeChild(textarea);
     }
@@ -126,7 +123,6 @@ function CopyChip({ value }: { value: string }) {
   );
 }
 
-// Satu baris label/value di dalam panel detail — dipakai berulang di tiap seksi.
 function DetailField({
   label,
   children,
@@ -187,8 +183,6 @@ function DetailSection({
   );
 }
 
-// Panel detail lengkap — semua kolom data ditampilkan, dikelompokkan biar gampang
-// dibaca, gayanya kaya kartu boarding pass / audit trail, bukan cuma daftar rata.
 function DetailPanel({ r }: { r: Registration }) {
   return (
     <div className="space-y-3 border-t-4 border-black bg-[#FFF7DA] p-4">
@@ -267,15 +261,8 @@ export default function RegistrationsTable({
 }: {
   registrations: Registration[];
   isLive: boolean;
-  // Judul tabel — dipakai buat bedain tabel "Peserta Aktif" vs "Kedaluwarsa
-  // & Dibatalkan" saat dipisah di DashboardOverview.
   title?: string;
-  // Opsi dropdown filter status. Default-nya semua status, tapi tiap
-  // instance tabel bisa dikasih subset-nya sendiri (mis. tabel aktif cuma
-  // punya opsi confirmed/pending_payment).
   statusOptions?: StatusOption[];
-  // Warna background strip header, biar tabel "bermasalah" (expired/
-  // cancelled) kelihatan beda sekilas dari tabel peserta aktif.
   headerAccent?: string;
 }) {
   const [query, setQuery] = useState("");
@@ -285,10 +272,7 @@ export default function RegistrationsTable({
   const [feedback, setFeedback] = useState<Record<string, string>>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // Target peserta yang mau dihapus — begitu di-set, modal konfirmasi muncul.
   const [deleteTarget, setDeleteTarget] = useState<Registration | null>(null);
-  // Dihapus optimis di sisi client biar hilang instan dari tabel walau
-  // realtime subscription di parent belum sempat propagate event DELETE-nya.
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
 
   const filtered = useMemo(() => {
@@ -307,7 +291,6 @@ export default function RegistrationsTable({
   }, [registrations, query, statusFilter, deletedIds]);
 
   function handleExport() {
-    // Semua kolom dijabarin lengkap, bukan cuma ringkasan yang tampil di UI.
     const rows = filtered.map((r) => ({
       "ID Registrasi": r.id,
       "Nomor BIB": r.bib_number ?? "-",
@@ -327,7 +310,6 @@ export default function RegistrationsTable({
 
     const worksheet = XLSX.utils.json_to_sheet(rows);
 
-    // Lebar kolom biar enak dibaca, ga mepet-mepet.
     worksheet["!cols"] = [
       { wch: 38 }, // ID Registrasi
       { wch: 10 }, // Nomor BIB
@@ -389,8 +371,6 @@ export default function RegistrationsTable({
   const canResend = (status: string) =>
     status === "confirmed" || status === "pending_payment";
 
-  // Label tombol beda tergantung status: peserta yang belum bayar dapet
-  // "reminder", yang udah confirmed dapet "kirim ulang tiket" (isinya QR).
   const resendLabel = (status: string) =>
     status === "confirmed" ? "Resend E-Tiket" : "Remind";
 
@@ -463,9 +443,6 @@ export default function RegistrationsTable({
         </select>
       </div>
 
-      {/* Tabel — desktop. Tinggi dibatasi & scroll di dalam tabel sendiri
-          (bukan halaman) biar admin ga perlu scroll panjang buat lihat
-          seluruh data. Header ikut sticky pas discroll. */}
       <div className="hidden max-h-[65vh] overflow-auto border-t-4 border-black sm:block">
         <table className="w-full min-w-[1150px] text-left text-sm">
           <thead>
@@ -587,8 +564,6 @@ export default function RegistrationsTable({
         </table>
       </div>
 
-      {/* Card — mobile: ringkas seperti biasa, diketuk buat buka panel detail lengkap.
-          Tinggi dibatasi relatif ke viewport biar konsisten sama versi desktop. */}
       <div className="flex max-h-[65vh] flex-col overflow-hidden border-t-4 border-black sm:hidden">
         <div className="divide-y-2 divide-black/10 overflow-y-auto">
           {filtered.map((r) => {

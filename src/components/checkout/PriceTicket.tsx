@@ -9,11 +9,6 @@ export type PriceRow = {
   tone?: "default" | "discount" | "addition";
 };
 
-// Signature element redesign checkout: dibuat mirip tiket/BIB lari yang
-// disobek jadi dua — bagian kiri rincian harga, bagian kanan "stub" kecil
-// (kode unik transfer, atau nomor order Midtrans) yang seolah-olah bisa
-// disobek terpisah. Lubang di atas & bawah garis putus-putus meniru
-// perforasi tiket sungguhan.
 export default function PriceTicket({
   rows,
   totalLabel,

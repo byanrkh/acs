@@ -13,14 +13,7 @@ import { cn } from "@/libs/cn";
 import PageHeader from "@/components/dashboard/PageHeader";
 
 const SCANNER_ELEMENT_ID = "acs-qr-scanner";
-
-// --- Konfigurasi HID Barcode Scanner (mis. HC-P10) ---
-// Scanner fisik mengetik karakter dengan jeda sangat pendek (biasanya <10ms
-// antar karakter). Kalau jeda antar-keystroke melebihi ambang ini, buffer
-// dianggap bukan bagian dari satu scan yang sama dan direset.
 const SCAN_KEY_INTERVAL_THRESHOLD_MS = 50;
-// Panjang minimum supaya Enter "nyasar" (mis. dari tombol lain) tidak
-// dianggap hasil scan valid.
 const MIN_SCAN_LENGTH = 3;
 
 type HistoryEntry = {
@@ -31,8 +24,6 @@ type HistoryEntry = {
   ok: boolean;
 };
 
-// Beep pendek pakai Web Audio API — feedback instan buat panitia di venue
-// yang rame, ga perlu liat layar tiap kali abis scan.
 function playTone(frequency: number, durationMs = 160) {
   try {
     const Ctx =
@@ -56,7 +47,7 @@ function playTone(frequency: number, durationMs = 160) {
     osc.stop(ctx.currentTime + durationMs / 1000 + 0.02);
     osc.onended = () => ctx.close();
   } catch {
-    // Perangkat/browser ga support Web Audio — abaikan, ga kritis.
+    // ...
   }
 }
 
@@ -128,12 +119,6 @@ function DetailSection({
 
 export default function ScanPage() {
   const [result, setResult] = useState<ScanResult | null>(null);
-  // Dipakai KHUSUS oleh jalur pencarian manual (email/no. HP): kalau ada
-  // lebih dari 1 data yang cocok (karena email/NISN/telepon sekarang boleh
-  // dipakai buat lebih dari 1x pendaftaran), daftar pilihannya ditaruh di
-  // sini dulu, nunggu panitia pilih salah satu. Jalur scan kamera/HID TIDAK
-  // pernah mengisi state ini karena hasilnya selalu 1 data spesifik (lewat
-  // UUID di QR).
   const [contactMatches, setContactMatches] = useState<
     ScanRegistration[] | null
   >(null);
@@ -146,8 +131,6 @@ export default function ScanPage() {
   const lastScannedRef = useRef<string | null>(null);
   const scannerRef = useRef<import("html5-qrcode").Html5Qrcode | null>(null);
 
-  // --- State buffer untuk HID scanner (bukan useState agar tidak re-render
-  // tiap keystroke; HID scanner bisa kirim puluhan keydown per detik) ---
   const hidBufferRef = useRef("");
   const hidLastKeyTimeRef = useRef(0);
 
@@ -166,11 +149,6 @@ export default function ScanPage() {
       ].slice(0, 8),
     );
   }
-
-  // Jalur validasi bersama: dipakai baik oleh kamera (html5-qrcode) maupun
-  // oleh HID barcode scanner, supaya keduanya konsisten dan tidak dobel logic.
-  // Hasilnya SELALU 1 data spesifik (dicocokkan lewat UUID di QR), jadi tidak
-  // pernah menyentuh state contactMatches.
   const processScannedCode = useCallback((rawCode: string) => {
     const decodedText = rawCode.trim();
     if (!decodedText) return;
@@ -197,11 +175,6 @@ export default function ScanPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Dipanggil setelah panitia memilih salah satu data dari daftar hasil
-  // pencarian manual (contactMatches), ATAU langsung dipanggil kalau hasil
-  // pencarian cuma 1 data. Validasi status "confirmed" dilakukan di sini
-  // (per data yang dipilih), bukan lagi di server action, supaya data yang
-  // belum confirmed tetap kelihatan di daftar pilihan.
   function selectContactMatch(reg: ScanRegistration) {
     if (reg.status !== "confirmed") {
       const errorMsg = `Peserta ditemukan, tapi status pendaftaran belum "confirmed" (status saat ini: ${reg.status}).`;
@@ -219,16 +192,6 @@ export default function ScanPage() {
       ok: true,
     });
   }
-
-  // Jalur pencarian manual (fallback kalau QR peserta rusak/ga kebawa):
-  // panitia ketik email ATAU nomor HP, backend yang auto-detect mana yang
-  // dimaksud (lihat lookupRegistrationByContact). Sengaja terpisah dari
-  // processScannedCode karena inputnya bukan hasil decode QR/UUID.
-  //
-  // PERUBAHAN: karena email/NISN/telepon sekarang boleh dipakai buat lebih
-  // dari 1x pendaftaran, hasil pencariannya bisa lebih dari 1 data. Kalau
-  // cuma ketemu 1, langsung tampil seperti biasa. Kalau lebih dari 1,
-  // tampilkan daftar dulu (contactMatches) biar panitia yang pilih.
   function processManualContact(rawValue: string) {
     const value = rawValue.trim();
     if (!value) return;
@@ -250,16 +213,10 @@ export default function ScanPage() {
         selectContactMatch(res.registrations[0]);
         return;
       }
-
-      // Lebih dari 1 data cocok — tampilkan daftar pilihan, jangan langsung
-      // tampilkan salah satunya.
       setResult(null);
       setContactMatches(res.registrations);
     });
   }
-
-  // --- Kamera / webcam (html5-qrcode) — TIDAK diubah selain memanggil
-  // processScannedCode() sebagai pengganti logic inline sebelumnya ---
   useEffect(() => {
     let cancelled = false;
 
@@ -277,9 +234,7 @@ export default function ScanPage() {
           (decodedText) => {
             processScannedCode(decodedText);
           },
-          () => {
-            // diabaikan — dipanggil terus tiap frame walau QR belum kedeteksi
-          },
+          () => {},
         );
         setScannerActive(true);
       } catch (err) {
@@ -297,13 +252,8 @@ export default function ScanPage() {
         .catch(() => {});
     };
   }, [processScannedCode]);
-
-  // --- HID Barcode Scanner (mis. HC-P10) via USB Keyboard Emulation ---
-  // Listener global di background: tidak butuh fokus/klik elemen apa pun.
   useEffect(() => {
     function handleHidKeyDown(e: KeyboardEvent) {
-      // Jangan ganggu kalau fokus sedang di elemen form aktif (input/textarea/
-      // select/contentEditable) — termasuk field input manual di bawah.
       const target = e.target as HTMLElement | null;
       const tag = target?.tagName;
       if (
@@ -337,8 +287,6 @@ export default function ScanPage() {
         return;
       }
 
-      // Hanya tampung karakter cetak tunggal (huruf/angka/simbol dari
-      // scanner). Tombol non-karakter (Shift, Ctrl, Alt, dll) diabaikan.
       if (e.key.length === 1) {
         hidBufferRef.current += e.key;
       }
@@ -355,9 +303,6 @@ export default function ScanPage() {
     setTakenJustNow(false);
   }
 
-  // Balik dari tampilan detail ke daftar pilihan hasil pencarian manual
-  // (dipakai kalau panitia salah pilih data di antara beberapa yang cocok).
-  // contactMatches sengaja tidak direset di sini, cuma di-hide lewat result.
   function handleBackToMatches() {
     setResult(null);
     setTakenJustNow(false);
@@ -409,7 +354,6 @@ export default function ScanPage() {
       />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-5 lg:items-start lg:gap-8">
-        {/* Kolom kiri: viewfinder + input manual */}
         <div className="lg:col-span-2">
           <div className="relative overflow-hidden border-4 border-black bg-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
             <div
@@ -430,13 +374,6 @@ export default function ScanPage() {
               {scannerActive ? null : "Camera Loading..."}
             </div>
           </div>
-
-          {/* Input manual — fallback kalau kamera/scanner ga bisa dipakai,
-              atau QR peserta rusak/ga kebawa. Cari berdasarkan EMAIL atau
-              NOMOR HP peserta, otomatis kedeteksi dari yang diketik. Karena
-              email/no. HP sekarang boleh dipakai lebih dari 1x daftar, hasil
-              cari bisa nampilin lebih dari 1 data (lihat panel hasil di
-              kolom kanan). */}
           <div className="mt-4 border-2 border-black bg-white">
             <button
               type="button"
@@ -483,7 +420,6 @@ export default function ScanPage() {
             )}
           </div>
 
-          {/* Riwayat scan sesi ini */}
           {history.length > 0 && (
             <div className="mt-4 border-2 border-black bg-white">
               <div className="flex items-center justify-between border-b-2 border-black bg-black px-3 py-1.5">
@@ -541,7 +477,6 @@ export default function ScanPage() {
           )}
         </div>
 
-        {/* Kolom kanan: hasil scan */}
         <div className="lg:col-span-3">
           {isPending && (
             <div className="animate-pulse border-4 border-black bg-white p-5 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
@@ -571,8 +506,6 @@ export default function ScanPage() {
             </div>
           )}
 
-          {/* Daftar pilihan kalau pencarian manual nemu lebih dari 1 data
-              yang cocok (email/no. HP dipakai lebih dari 1x daftar). */}
           {contactMatches && !result && !isPending && (
             <div className="border-4 border-black bg-white p-5 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
               <p
@@ -790,9 +723,6 @@ export default function ScanPage() {
               )}
 
               <div className="mt-4 flex flex-wrap gap-2">
-                {/* Cuma muncul kalau result ini berasal dari daftar pilihan
-                    (contactMatches masih ada lebih dari 1 data), biar panitia
-                    bisa balik milih data lain tanpa harus ngetik ulang. */}
                 {contactMatches && contactMatches.length > 1 && (
                   <button
                     type="button"

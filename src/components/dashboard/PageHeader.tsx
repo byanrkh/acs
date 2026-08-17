@@ -41,7 +41,6 @@ export default function PageHeader({
 
   return (
     <div className="relative overflow-hidden border-4 border-black bg-white shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
-      {/* Strip aksen atas — bergaris ala perforasi tiket */}
       <div
         aria-hidden
         className="h-1.5 w-full bg-[repeating-linear-gradient(90deg,#000_0,#000_10px,transparent_10px,transparent_20px)] opacity-80"

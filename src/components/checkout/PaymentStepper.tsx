@@ -11,15 +11,6 @@ export type PaymentStep = {
   state: StepState;
 };
 
-// Tracker checkpoint ala rute lomba lari: tiap titik = satu tahap
-// pembayaran yang BENERAN berurutan (daftar -> bayar -> verifikasi ->
-// lunas), jadi angka/urutan di sini bukan hiasan, tapi status sungguhan.
-//
-// Garis penghubung digambar `absolute`, mulai persis dari titik tengah
-// lingkaran ini sampai titik tengah lingkaran berikutnya (bukan cuma
-// "sisa ruang" di kolom yang sama) -- ini penting supaya lingkaran tetap
-// center di kolomnya masing-masing dan sejajar lurus dengan label di
-// bawahnya, nggak makin geser ke kanan tiap step.
 export default function PaymentStepper({ steps }: { steps: PaymentStep[] }) {
   return (
     <div>

@@ -10,13 +10,8 @@ import RegistrationsTable, {
   type Registration,
 } from "@/components/dashboard/RegistrationTable";
 
-// Baris registrations lengkap seperti yang dikirim event realtime Supabase
-// (final_amount ikut dipakai buat hitung stat pendapatan).
 type RealtimeRegistration = Registration & { final_amount: number };
 
-// NIK itu data pribadi sensitif -- cuma dev@acs.id yang boleh lihat nilai
-// aslinya. Update dari channel realtime bawa data mentah dari DB (ga lewat
-// masking server), jadi wajib disamarkan lagi di sini juga.
 const NIK_VISIBLE_EMAIL = "dev@acs.id";
 
 function maskNik(
@@ -29,12 +24,7 @@ function maskNik(
   return { ...row, nik_terakhir: row.nik_terakhir.slice(-10) };
 }
 
-// Status yang masih dianggap "peserta aktif" -- lagi nunggu bayar atau udah
-// bayar dan terkonfirmasi. Dipisah dari status "gagal" (expired/cancelled)
-// biar admin ga perlu scroll nyari peserta beneran di antara data basi.
 const ACTIVE_STATUSES = new Set(["pending_payment", "confirmed"]);
-// Status "gagal" -- kena expired otomatis (telat bayar 3 jam) atau
-// dibatalkan manual oleh admin.
 const INACTIVE_STATUSES = new Set(["expired", "cancelled"]);
 
 const ACTIVE_STATUS_OPTIONS = [
@@ -58,14 +48,8 @@ export default function DashboardOverview({
 }) {
   const [rows, setRows] = useState(initialRegistrations);
   const [isLive, setIsLive] = useState(false);
-  // Cuma 1 tabel yang ditampilin dalam satu waktu -- yang lain disembunyiin
-  // pakai `hidden` (bukan di-unmount) biar search/filter/expanded row-nya
-  // ga reset begitu admin pindah-pindah tab.
   const [activeTab, setActiveTab] = useState<"active" | "inactive">("active");
 
-  // Satu-satunya channel realtime buat halaman ini. Stats card & kedua
-  // tabel sama-sama diturunkan dari state `rows` yang sama, jadi ga ada
-  // banyak subscription yang jalan bersamaan buat data yang sama.
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
 
@@ -94,8 +78,6 @@ export default function DashboardOverview({
             if (exists) {
               return prev.map((r) => (r.id === newRow.id ? newRow : r));
             }
-            // Pendaftar baru -> taruh paling atas, samain sama urutan
-            // awal (created_at descending) dari server.
             return [newRow, ...prev];
           });
         },
@@ -127,9 +109,6 @@ export default function DashboardOverview({
         ),
     };
   }, [rows]);
-
-  // Dipisah di sini (bukan di dalam RegistrationsTable) supaya masing-masing
-  // tabel murni cuma nerima subset data yang relevan buat dirinya.
   const activeRows = useMemo(
     () => rows.filter((r) => ACTIVE_STATUSES.has(r.status)),
     [rows],
@@ -142,9 +121,6 @@ export default function DashboardOverview({
   return (
     <div className="space-y-4 sm:space-y-6">
       <StatsCards stats={stats} />
-
-      {/* Tab switcher -- cuma 1 tabel yang keliatan, jadi total tinggi
-          halaman ga numpuk dua tabel sekaligus. */}
       <div
         className={cn(
           spaceMono.className,

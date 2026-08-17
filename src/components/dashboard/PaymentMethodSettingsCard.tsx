@@ -41,10 +41,6 @@ function formatUpdatedAt(iso: string | null) {
     minute: "2-digit",
   });
 }
-
-// Switch ala neubrutalism: kotak border tebal, bulatan geser, warna ikut
-// status aktif/nonaktif -- konsisten sama tombol-tombol lain di dashboard
-// (border-4 + shadow offset), bukan pill iOS generik.
 function MethodSwitch({
   checked,
   onToggle,
@@ -89,8 +85,6 @@ function MethodRow({
   function handleToggle() {
     const next = !row.enabled;
     setError(null);
-    // Optimistic update dulu biar switch-nya kerasa responsif, di-revert
-    // kalau server actionnya ternyata gagal (misal sesi admin sudah habis).
     onToggled(row.id, next);
 
     startTransition(async () => {

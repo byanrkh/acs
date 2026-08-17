@@ -3,10 +3,6 @@ import VerifikasiTransferTable from "@/components/dashboard/VerifikasiTransferTa
 import BuktiTransferHistory from "@/components/dashboard/BuktiTransferHistory";
 
 export const dynamic = "force-dynamic";
-
-// Batas jumlah baris yang ditarik buat section riwayat. Section ini pakai
-// virtual scrolling di client, tapi tetap butuh batas atas biar query &
-// payload awal gak jadi liar kalau datanya udah ribuan baris.
 const HISTORY_LIMIT = 2000;
 
 export default async function VerifikasiTransferPage() {
@@ -26,16 +22,10 @@ export default async function VerifikasiTransferPage() {
     );
   }
 
-  // PROMO: grossAmount sekarang pakai final_amount (sudah memperhitungkan
-  // diskon promo kalau ada) + kode unik, BUKAN tarif dasar kategori mentah.
   const data = (registrations ?? []).map((r) => ({
     ...r,
     grossAmount: r.final_amount + (r.nomor_urut ?? 0),
   }));
-
-  // Riwayat semua bukti transfer yang PERNAH diunggah, lintas status
-  // (waiting_verification, confirmed, cancelled, expired) — bukan cuma
-  // yang lagi nunggu verifikasi. Diurutkan terbaru dulu.
   const { data: historyRows, error: historyError } = await supabaseAdmin
     .from("registrations")
     .select(

@@ -25,19 +25,8 @@ export type HistoryRow = {
 };
 
 type StatusFilter = "semua" | HistoryStatus;
-
-// ============================================================
-// KONFIGURASI VIRTUAL SCROLLING
-// ============================================================
-// Tinggi tiap baris (px) — HARUS konsisten karena posisi baris dihitung
-// dari index * ROW_HEIGHT, bukan diukur langsung dari DOM. Kalau mau bikin
-// tinggi baris dinamis, butuh pendekatan lain (mis. estimasi + measurement
-// pass) — tapi buat daftar bukti transfer, tinggi seragam sudah cukup.
 const ROW_HEIGHT = 88;
-// Tinggi area scroll yang keliatan (px).
 const VIEWPORT_HEIGHT = 560;
-// Jumlah baris ekstra yang dirender di atas & bawah viewport biar gak ada
-// "flash" putih pas scroll cepat.
 const OVERSCAN = 6;
 
 const STATUS_LABEL: Record<HistoryStatus, string> = {
@@ -85,7 +74,6 @@ export default function BuktiTransferHistory({
   const [scrollTop, setScrollTop] = useState(0);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
-  // Tutup lightbox pakai tombol Esc.
   useEffect(() => {
     if (!lightbox) return;
     function handleKeyDown(e: KeyboardEvent) {
@@ -106,8 +94,6 @@ export default function BuktiTransferHistory({
     });
   }, [items, search, statusFilter]);
 
-  // Reset posisi scroll setiap kali hasil filter berubah, biar gak
-  // "nyangkut" di tengah daftar lama yang udah gak relevan.
   useEffect(() => {
     setScrollTop(0);
     if (scrollContainerRef.current) {
@@ -175,7 +161,6 @@ export default function BuktiTransferHistory({
         </div>
       ) : (
         <div className="border-4 border-black bg-white shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
-          {/* Header kolom (statis, gak ikut di-virtualize) */}
           <div
             className={cn(
               spaceMono.className,
@@ -188,11 +173,6 @@ export default function BuktiTransferHistory({
             <span>Nominal + Kode Unik</span>
             <span>Status</span>
           </div>
-
-          {/* Viewport scroll dengan tinggi tetap — inti dari virtual
-              scrolling: cuma baris yang keliatan (+ overscan) yang
-              di-render ke DOM, sisanya cuma "ruang kosong" lewat
-              totalHeight di bawah. */}
           <div
             ref={scrollContainerRef}
             onScroll={handleScroll}
@@ -229,7 +209,6 @@ export default function BuktiTransferHistory({
                           }
                           className="group relative block h-16 w-16 shrink-0 border-2 border-black"
                         >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={row.bukti_transfer}
                             alt={`Bukti transfer ${row.nama_lengkap}`}

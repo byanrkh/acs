@@ -20,8 +20,6 @@ export default function DashboardShell({
   const [collapsed, setCollapsed] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
-  // Baca preferensi collapse dari localStorage sekali pas mount, supaya
-  // admin ga harus collapse ulang tiap ganti halaman.
   useEffect(() => {
     const saved = window.localStorage.getItem(COLLAPSE_KEY);
     if (saved === "1") setCollapsed(true);

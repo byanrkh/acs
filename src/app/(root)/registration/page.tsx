@@ -10,16 +10,9 @@ export const metadata: Metadata = {
   title: "Registration — ACS 2026: Archipelapace",
 };
 
-// Wajib dynamic -- getConfirmedRegistrationCount() harus dihitung ulang
-// tiap request, bukan sekali waktu build/statically cached, biar begitu
-// peserta confirmed ke-200 halaman ini langsung ganti jadi pesan tertutup.
 export const dynamic = "force-dynamic";
 
 export default async function RegistrationPage() {
-  // Server-side, dicek tiap kali halaman ini diakses (dynamic, bukan
-  // statically cached) -- begitu peserta confirmed nyentuh kuota, form
-  // langsung diganti pesan "pendaftaran ditutup" di sini juga, selaras
-  // sama penjagaan di submitRegistration (libs/actions/registration.ts).
   const registrationClosed = await isRegistrationClosed();
 
   return (

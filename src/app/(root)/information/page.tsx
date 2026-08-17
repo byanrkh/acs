@@ -26,7 +26,6 @@ export default function InformationPage() {
       />
 
       <Container>
-        {/* INTRO */}
         <section className="relative -mt-8 sm:-mt-10">
           <div className="border-4 border-black bg-white p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] sm:p-10">
             <span className="inline-block -rotate-1 border-2 border-black bg-[#FFD400] px-3 py-1 text-[11px] font-bold uppercase tracking-widest">
@@ -68,9 +67,6 @@ export default function InformationPage() {
                 sehat.
               </p>
             </div>
-
-            {/* Fakta penting ala bib info — sebelumnya cuma didefinisikan, ga
-                pernah ditampilkan; sekarang kepakai beneran */}
             <div className="mt-6 flex flex-wrap gap-3">
               {quickFacts.map((f) => (
                 <span
@@ -95,11 +91,8 @@ export default function InformationPage() {
           </div>
         </section>
 
-        {/* PRICE LIST + POSTER */}
         <section className="mt-10 sm:mt-14">
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-            {/* Price list, gaya "race bib" — nomor & nominal ditonjolkan kayak
-                bib number, bukan kartu generik */}
             <div className="flex flex-col border-4 border-black bg-white shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] transition-transform hover:-translate-y-1">
               <div className="relative border-b-4 border-black bg-[#7ED957] px-5 py-4 text-center">
                 <div
@@ -181,7 +174,6 @@ export default function InformationPage() {
           </div>
         </section>
 
-        {/* VENUE */}
         <section className="mt-16 sm:mt-24">
           <div className="mb-8 sm:mb-10">
             <span
@@ -203,7 +195,6 @@ export default function InformationPage() {
           </div>
         </section>
 
-        {/* TIMELINE */}
         <section className="mt-16 sm:mt-24">
           <div className="mb-8 sm:mb-10">
             <span
@@ -227,7 +218,6 @@ export default function InformationPage() {
           <InfoTimeline />
         </section>
 
-        {/* TERMS */}
         <section className="mt-16 sm:mt-24">
           <div className="mb-8 sm:mb-10">
             <span

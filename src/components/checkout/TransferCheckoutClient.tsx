@@ -90,10 +90,6 @@ export default function TransferCheckoutClient({
 
   const [namaLengkap, setNamaLengkap] = useState(registration.nama_lengkap);
 
-  // Sama seperti di CheckoutClient.tsx (channel Midtrans) -- penanda dari
-  // submitRegistration ketika duplicate-check nemu pendaftaran lama dengan
-  // NISN/NIK yang sama, langsung diarahkan ke sini alih-alih bikin baris
-  // baru. Query dibuang begitu dibaca.
   const [showResumedBanner, setShowResumedBanner] = useState(false);
   useEffect(() => {
     if (searchParams.get("resumed") !== "1") return;

@@ -14,7 +14,6 @@ export default function DocumentationPage() {
       />
 
       <Container>
-        {/* RELIVE THE MEMORIES */}
         <section className="py-16 sm:py-24">
           <div className="text-center">
             <span

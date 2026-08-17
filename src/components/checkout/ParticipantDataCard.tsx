@@ -69,12 +69,9 @@ export default function ParticipantDataCard({
 }: {
   registrationId: string;
   kategori: "pelajar" | "umum";
-  /** "NISN" untuk pelajar, "NIK" untuk umum. */
   identifierLabel: string;
-  /** Nilai NISN/NIK -- read-only, tidak pernah dikirim ke form edit. */
   identifierValue: string;
   data: ParticipantData;
-  /** false kalau status registration sudah tidak boleh diubah lagi. */
   editable: boolean;
   onUpdated: (patch: {
     namaLengkap: string;

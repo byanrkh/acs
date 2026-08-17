@@ -28,11 +28,6 @@ import { getRegistrationFee } from "@/libs/config/pricing";
 import { SpecialGhotic, spaceMono } from "@/libs/Font";
 import { cn } from "@/libs/cn";
 
-// Snap.js nyuntik `window.snap` secara global setelah script-nya kelar
-// dimuat. Deklarasi minimal callback yang kita pakai — Snap sebenarnya
-// ngirim lebih banyak field di objek result, tapi kita cuma butuh momen
-// (success/pending/error/close)-nya, bukan detail isinya (status final
-// tetap kita ambil dari DB lewat reconcilePaymentStatus/webhook).
 declare global {
   interface Window {
     snap?: {
@@ -131,11 +126,6 @@ function useCountdown(target: string | null) {
   };
 }
 
-// Berapa kali polling otomatis jalan sebelum berhenti dan nyerahin ke
-// tombol "Cek status sekarang". 60x @ 5 detik = 5 menit -- cukup buat
-// nunggu VA/QRIS/GoPay ke-settle di sandbox atau kasus normal di
-// production, tanpa nge-hammer server actions kalau user ninggalin tab
-// kebuka lama.
 const MAX_POLL_ATTEMPTS = 60;
 const POLL_INTERVAL_MS = 5000;
 
@@ -144,13 +134,6 @@ export default function CheckoutClient({
   hasPaymentMethod,
 }: {
   registration: Registration;
-  /**
-   * Apakah ADA MINIMAL SATU metode pembayaran yang lagi aktif menurut
-   * Dashboard > Settings > Metode Bayar. UI pemilihan metode sendiri
-   * sepenuhnya di-render oleh popup Snap, jadi kita nggak perlu tahu
-   * daftar lengkapnya lagi di sini — cukup tahu boleh/tidaknya tombol
-   * "Bayar Sekarang" diklik.
-   */
   hasPaymentMethod: boolean;
 }) {
   const router = useRouter();
@@ -162,12 +145,6 @@ export default function CheckoutClient({
   const [waitingConfirmation, setWaitingConfirmation] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [snapReady, setSnapReady] = useState(false);
-
-  // Ditandain lewat query `?resumed=1` dari submitRegistration ketika
-  // duplicate-check nemu pendaftaran lama dengan NISN/NIK yang sama, dan
-  // langsung ngarahin ke sini alih-alih bikin pendaftaran baru. Query-nya
-  // langsung dibuang dari URL begitu dibaca supaya tidak nongol lagi kalau
-  // halaman ini di-refresh atau di-bookmark/dibagikan.
   const [showResumedBanner, setShowResumedBanner] = useState(false);
   useEffect(() => {
     if (searchParams.get("resumed") !== "1") return;
@@ -176,11 +153,6 @@ export default function CheckoutClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Field peserta yang bisa berubah lewat "Edit Data" dan dipakai juga di
-  // luar ParticipantDataCard (subtitle header di bawah). Field lain yang
-  // ikut diedit (tempat lahir, golongan darah, dst) cukup dikelola secara
-  // lokal di dalam ParticipantDataCard sendiri, karena tidak ditampilkan
-  // di luar kartu itu.
   const [namaLengkap, setNamaLengkap] = useState(registration.nama_lengkap);
   const [ukuranJersey, setUkuranJersey] = useState(registration.ukuran_jersey);
 
@@ -199,12 +171,6 @@ export default function CheckoutClient({
     status === "pending_payment" ? registration.payment_expires_at : null,
   );
 
-  // PENTING: "expired" SENGAJA dikeluarkan dari kedua flag ini sekarang.
-  // Checkout yang sudah kedaluwarsa adalah jalan buntu -- tidak ada
-  // gunanya lagi edit promo/data peserta di baris yang sudah tidak bisa
-  // dibayar. Satu-satunya jalan lanjut buat peserta adalah daftar ulang
-  // dari awal lewat halaman /registration (lihat tombol CTA di bawah),
-  // yang otomatis bikin baris registration BARU.
   const canEditPromo = status === "pending_payment";
   const canEditParticipantData = status === "pending_payment";
 
@@ -263,10 +229,6 @@ export default function CheckoutClient({
   }, [waitingConfirmation]);
 
   function handlePay() {
-    // Jaga-jaga sisi client: tombol ini seharusnya sudah tidak dirender
-    // sama sekali kalau status === "expired" (lihat bagian render di
-    // bawah), tapi tetap ditolak di sini juga kalau somehow ke-trigger.
-    // Sumber kebenaran final tetap di server lewat createPaymentTransaction.
     if (status === "expired") {
       setErrorMessage(
         "Pendaftaran ini sudah kedaluwarsa. Silakan daftar ulang lewat halaman Pendaftaran.",
@@ -297,11 +259,6 @@ export default function CheckoutClient({
         return;
       }
 
-      // Popup Snap yang render pilihan GoPay/QRIS/VA/dll + status
-      // sukses/pending/gagal-nya sendiri. Kita cuma perlu tahu MOMENnya
-      // buat mulai polling status ke DB (status final tetap sumber
-      // kebenarannya dari webhook + reconcilePaymentStatus, bukan dari
-      // callback ini, supaya konsisten dengan halaman kalau di-reload).
       window.snap!.pay(result.snap.token, {
         onSuccess: () => setWaitingConfirmation(true),
         onPending: () => setWaitingConfirmation(true),
@@ -490,11 +447,6 @@ export default function CheckoutClient({
             </p>
           </div>
         ) : status === "expired" ? (
-          // Checkout kedaluwarsa = jalan buntu, SENGAJA tidak ada lagi
-          // tombol bayar di sini sama sekali. Satu-satunya jalan lanjut
-          // adalah isi ulang form pendaftaran dari awal -- NISN/NIK sudah
-          // otomatis bebas dipakai lagi begitu status jadi "expired" (lihat
-          // findDuplicateRegistration di libs/actions/registration.ts).
           <div className="border-4 border-[#D91E36] bg-[#D91E36]/10 p-5 text-center">
             <p
               className={cn(

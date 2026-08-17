@@ -297,13 +297,14 @@ export async function resendRegistrationEmail(
           }),
         });
       } else {
-        if (!registration.midtrans_redirect_url || !registration.payment_expires_at) {
+        if (!registration.midtrans_order_id || !registration.payment_expires_at) {
           return { ok: false, error: "Data pembayaran belum lengkap, tidak bisa kirim reminder." };
         }
 
-        // Jaga-jaga kalau belum ke-flip ke "expired" (checkAndExpireIfPastDeadline
-        // cuma jalan pas peserta buka halaman checkout-nya sendiri) — daripada
-        // ngirim reminder ke link yang udah kedaluwarsa, update dulu statusnya.
+        // Jaga-jaga kalau belum ke-flip ke "expired" (cron
+        // expire-pending-registrations biasanya sudah menangani ini duluan,
+        // tapi tetap dicek ulang di sini) — daripada ngirim reminder ke
+        // registrasi yang udah kedaluwarsa, update dulu statusnya.
         const isPastDeadline =
           new Date(registration.payment_expires_at).getTime() < Date.now();
 
@@ -320,6 +321,15 @@ export async function resendRegistrationEmail(
           };
         }
 
+        // PENTING: link di email SELALU halaman checkout KITA
+        // (/checkout/[id]), BUKAN registration.midtrans_redirect_url
+        // (halaman hosted Midtrans langsung). Checkout kita yang jadi
+        // satu-satunya pintu bayar -- begitu status expired, halaman itu
+        // sendiri yang menolak & mengarahkan ke pendaftaran ulang (lihat
+        // CheckoutClient.tsx), sesuatu yang tidak bisa dilakukan kalau
+        // orang mendarat langsung di halaman Midtrans.
+        const checkoutUrl = `${process.env.NEXT_PUBLIC_APP_URL}/checkout/${registration.id}`;
+
         await resend.emails.send({
           from: EMAIL_FROM,
           to: registration.email,
@@ -331,7 +341,7 @@ export async function resendRegistrationEmail(
             ukuranJersey: registration.ukuran_jersey,
             grossAmount: getRegistrationFee(registration.kategori),
             paymentExpiresAt: registration.payment_expires_at,
-            paymentUrl: registration.midtrans_redirect_url,
+            paymentUrl: checkoutUrl,
           }),
         });
       }

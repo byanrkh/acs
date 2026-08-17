@@ -142,10 +142,10 @@ async function findDuplicateRegistration(
 
   // Lazy-expire: kandidat berstatus "pending_payment" yang batas waktu
   // bayarnya (payment_expires_at) sudah lewat TAPI status di database belum
-  // sempat berubah jadi "expired" (karena belum ada yang membuka halaman
-  // checkout lamanya untuk memicu checkAndExpireIfPastDeadline). Tanpa ini,
-  // peserta yang belum bayar > 3 jam dan LANGSUNG isi form lagi (tanpa buka
-  // link checkout lamanya dulu) akan tetap ke-block, padahal seharusnya
+  // sempat berubah jadi "expired" (biasanya cron expire-pending-registrations
+  // di Supabase sudah menangani ini duluan, tapi tetap dicek ulang di sini
+  // sebagai jaga-jaga). Tanpa ini, peserta yang belum bayar > 3 jam dan
+  // LANGSUNG isi form lagi akan tetap ke-block, padahal seharusnya
   // NISN/NIK-nya sudah bebas dipakai lagi. Jadi di sini kita expire-kan
   // dulu baris lama tsb, lalu keluarkan dari daftar kandidat "aktif".
   const stillActiveCandidates: typeof candidates = [];
@@ -266,10 +266,12 @@ export async function submitRegistration(
     // JANGAN buat baris baru -- langsung arahkan ke checkout registration
     // lama. Halaman checkout ([id]/page.tsx dan transfer/[id]/page.tsx)
     // sudah otomatis menampilkan tampilan yang sesuai untuk tiap status:
-    // - pending_payment/expired -> form bayar (lanjutkan pembayaran lama)
-    // - waiting_verification    -> "Bukti transfer diterima, menunggu verifikasi"
-    // - confirmed               -> "Pembayaran terkonfirmasi" + BIB
-    // jadi tidak perlu bikin state/pesan baru lagi di sini.
+    // - pending_payment           -> form bayar (lanjutkan pembayaran)
+    // - waiting_verification      -> "Bukti transfer diterima, menunggu verifikasi"
+    // - confirmed                 -> "Pembayaran terkonfirmasi" + BIB
+    // jadi tidak perlu bikin state/pesan baru lagi di sini. ("expired"
+    // tidak mungkin nyampe sini -- sudah difilter keluar sebagai kandidat
+    // duplikat di findDuplicateRegistration di atas.)
     return {
       ok: true,
       registrationId: duplicateCheck.match.id,
@@ -402,14 +404,15 @@ export type UpdateRegistrationResult =
   }
   | { ok: false; error: string; field?: keyof EditRegistrationPayload };
 
-// Status yang masih boleh diedit datanya -- sama seperti definisi "masih
-// aktif / belum final" yang dipakai di duplicate-check dan UI checkout
-// (lihat CheckoutClient.tsx: canEditPromo = pending_payment || expired).
-// waiting_verification/confirmed/cancelled dikunci karena data pesertanya
-// sudah/sedang diproses panitia (bukti transfer, BIB, invoice, dll) --
-// mengubahnya di titik ini berisiko bikin data yang sudah diverifikasi
-// nggak sinkron lagi.
-const EDITABLE_STATUSES = new Set(["pending_payment", "expired"]);
+// Status yang masih boleh diedit datanya. "expired" SENGAJA dikeluarkan --
+// checkout yang sudah kedaluwarsa adalah jalan buntu (lihat CheckoutClient.tsx:
+// canEditPromo/canEditParticipantData sekarang cuma true untuk
+// pending_payment), jadi tidak ada lagi gunanya edit data di baris yang
+// sudah tidak bisa dibayar. waiting_verification/confirmed/cancelled tetap
+// dikunci karena data pesertanya sudah/sedang diproses panitia (bukti
+// transfer, BIB, invoice, dll) -- mengubahnya di titik ini berisiko bikin
+// data yang sudah diverifikasi nggak sinkron lagi.
+const EDITABLE_STATUSES = new Set(["pending_payment"]);
 
 function validateEditPayload(
   data: EditRegistrationPayload,
@@ -508,33 +511,37 @@ async function resendTransferInvoiceIfPossible(
 
 // Sama seperti di atas tapi untuk channel Midtrans. Cuma bisa "kirim ULANG"
 // kalau invoice yang PERTAMA sudah pernah terkirim sebelumnya -- itu artinya
-// user sudah pernah klik "Bayar Sekarang" sehingga order_id/redirect_url
-// Midtrans-nya sudah ada di database. Kalau belum pernah (order_id masih
-// kosong), tidak ada apa-apa untuk dikirim ulang -- dibiarkan saja, nanti
-// invoice PERTAMA otomatis terkirim ke email terbaru begitu mereka klik
-// bayar (createPaymentTransaction selalu pakai registration.email
-// yang paling baru dari database).
+// user sudah pernah klik "Bayar Sekarang" sehingga order_id-nya sudah ada di
+// database. Kalau belum pernah (order_id masih kosong), tidak ada apa-apa
+// untuk dikirim ulang -- dibiarkan saja, nanti invoice PERTAMA otomatis
+// terkirim ke email terbaru begitu mereka klik bayar (createPaymentTransaction
+// selalu pakai registration.email yang paling baru dari database).
+//
+// PENTING: `paymentUrl` di email SELALU halaman checkout KITA
+// (/checkout/[id]), BUKAN link hosted-page Midtrans (midtrans_redirect_url).
+// Checkout kita yang jadi satu-satunya pintu bayar -- begitu status
+// registrasi ini nanti expired, halaman itu sendiri yang otomatis menolak
+// & mengarahkan ke pendaftaran ulang (lihat CheckoutClient.tsx), sesuatu
+// yang tidak bisa terjadi kalau orang mendarat langsung di halaman Midtrans.
 async function resendMidtransInvoiceIfPossible(
   registration: {
+    id: string;
     nama_lengkap: string;
     kategori: "pelajar" | "umum";
     ukuran_jersey: string;
     final_amount: number;
     midtrans_order_id: string | null;
     payment_expires_at: string | null;
-    midtrans_redirect_url: string | null;
   },
   toEmail: string,
 ) {
-  if (
-    !registration.midtrans_order_id ||
-    !registration.payment_expires_at ||
-    !registration.midtrans_redirect_url
-  ) {
+  if (!registration.midtrans_order_id || !registration.payment_expires_at) {
     return;
   }
 
   try {
+    const checkoutUrl = `${process.env.NEXT_PUBLIC_APP_URL}/checkout/${registration.id}`;
+
     await resend.emails.send({
       from: EMAIL_FROM,
       to: toEmail,
@@ -546,7 +553,7 @@ async function resendMidtransInvoiceIfPossible(
         ukuranJersey: registration.ukuran_jersey,
         grossAmount: registration.final_amount,
         paymentExpiresAt: registration.payment_expires_at,
-        paymentUrl: registration.midtrans_redirect_url,
+        paymentUrl: checkoutUrl,
       }),
     });
   } catch (emailError) {
@@ -575,7 +582,7 @@ export async function updateRegistrationData(
   const { data: existing, error: fetchError } = await supabaseAdmin
     .from("registrations")
     .select(
-      "id, status, email, kategori, nomor_urut, final_amount, midtrans_order_id, payment_expires_at, midtrans_redirect_url",
+      "id, status, email, kategori, nomor_urut, final_amount, midtrans_order_id, payment_expires_at",
     )
     .eq("id", registrationId)
     .single();
@@ -625,7 +632,6 @@ export async function updateRegistrationData(
     const finalAmount = existing.final_amount as number;
     const midtransOrderId = existing.midtrans_order_id as string | null;
     const paymentExpiresAt = existing.payment_expires_at as string | null;
-    const midtransRedirectUrl = existing.midtrans_redirect_url as string | null;
     const namaLengkapBaru = updated.nama_lengkap as string;
     const ukuranJerseyBaru = updated.ukuran_jersey as string;
     const emailBaru = updated.email as string;
@@ -646,13 +652,13 @@ export async function updateRegistrationData(
       } else {
         await resendMidtransInvoiceIfPossible(
           {
+            id: registrationId,
             nama_lengkap: namaLengkapBaru,
             kategori,
             ukuran_jersey: ukuranJerseyBaru,
             final_amount: finalAmount,
             midtrans_order_id: midtransOrderId,
             payment_expires_at: paymentExpiresAt,
-            midtrans_redirect_url: midtransRedirectUrl,
           },
           emailBaru,
         );

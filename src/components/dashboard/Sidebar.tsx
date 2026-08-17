@@ -11,13 +11,9 @@ import { createSupabaseBrowserClient } from "@/libs/supabase/client";
 
 type IconProps = { className?: string };
 
-// Easing dipakai konsisten di semua transisi collapse biar berasa satu "gerakan",
-// bukan potongan-potongan animasi yang beda timing.
 const EASE = "ease-[cubic-bezier(0.16,1,0.3,1)]";
 const DUR = "duration-300";
 
-// Href item nav yang butuh badge live jumlah "menunggu verifikasi". Kalau
-// suatu saat ada item lain yang butuh badge serupa, tinggal tambah key di sini.
 const PENDING_BADGE_HREF = "/dashboard/transfer";
 
 function IconUsers({ className }: IconProps) {
@@ -127,10 +123,6 @@ function IconChevronDouble({ className }: IconProps) {
   );
 }
 
-// Badge lonceng notifikasi kecil di pojok ikon — nempel di ikon "Verifikasi
-// Transfer" kalau ada pendaftar yang lagi nunggu verifikasi bukti transfer.
-// Sengaja nempel di ikon (bukan di label), jadi tetap kelihatan walau
-// sidebar lagi di-collapse.
 function NavBadge({ count }: { count: number }) {
   if (count <= 0) return null;
   return (
@@ -148,9 +140,6 @@ function NavBadge({ count }: { count: number }) {
   );
 }
 
-// Wrapper generik buat "collapse" horizontal yang mulus: konten TETAP di-mount
-// (ga di-unmount kayak sebelumnya), cuma max-width & opacity-nya yang dianimasikan.
-// Ini yang bikin transisi collapse ga lagi kaku/pop begitu aja.
 function CollapseInline({
   collapsed,
   className,
@@ -161,13 +150,6 @@ function CollapseInline({
   collapsed: boolean;
   className?: string;
   maxWidth?: string;
-  // Margin-kiri dipisah dari `className` dan dipasang lewat inline style,
-  // BUKAN sebagai kelas Tailwind. Ini disengaja: cn() di project ini pakai
-  // tailwind-merge, jadi kalau margin ikut dioper lewat `className`,
-  // tailwind-merge akan selalu menang-mengangkan kelas yang dioper dari
-  // pemanggil di atas kelas "ml-0" bawaan komponen ini — margin-nya jadi
-  // "hantu" yang tetap kepake walau lagi collapsed (lebar 0), dan itu yang
-  // bikin ikon di sidebar collapsed kelihatan ga presisi di tengah.
   gapLeft?: string;
   children: React.ReactNode;
 }) {
@@ -189,9 +171,6 @@ function CollapseInline({
   );
 }
 
-// Wrapper buat "collapse" vertikal (blok yang seharusnya hilang total & bikin
-// elemen di bawahnya naik) pakai trik grid-template-rows 0fr -> 1fr, jauh lebih
-// mulus dibanding conditional mount/unmount karena height-nya nyata dianimasikan.
 function CollapseBlock({
   collapsed,
   className,
@@ -217,8 +196,6 @@ function CollapseBlock({
   );
 }
 
-// Baris toggle collapse/expand — sengaja jadi bagian dari alur sidebar (bukan
-// floating di tepi), biar ga pernah nabrak/nutupin item nav lain pas collapsed.
 function CollapseToggle({
   collapsed,
   onToggle,
@@ -361,12 +338,10 @@ export default function Sidebar({
   );
   const daysToRace = useDaysToRace();
 
-  // Tutup drawer otomatis tiap kali pindah halaman.
   useEffect(() => {
     setOpen(false);
   }, [pathname]);
 
-  // Lock scroll body + dukung tombol Escape selagi drawer mobile terbuka.
   useEffect(() => {
     if (!open) return;
     const previousOverflow = document.body.style.overflow;
@@ -380,11 +355,6 @@ export default function Sidebar({
       window.removeEventListener("keydown", onKeyDown);
     };
   }, [open]);
-
-  // Counter "Total Peserta" di footer sidebar tetap live walaupun admin lagi
-  // buka halaman lain (Scan, Settings, dll) yang ga nampilin tabel peserta.
-  // Channel-nya sengaja dipisah dari tabel data peserta biar ringan (cuma
-  // dengerin INSERT/DELETE, ga perlu payload penuh).
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
     const channel = supabase
@@ -405,14 +375,6 @@ export default function Sidebar({
       supabase.removeChannel(channel);
     };
   }, []);
-
-  // Badge "menunggu verifikasi" di item nav Transfer — beda dari counter
-  // peserta di atas, di sini kita butuh REFETCH count-nya (bukan cuma
-  // increment/decrement), karena perubahan yang relevan adalah pergantian
-  // STATUS baris yang sudah ada (pending_payment → waiting_verification saat
-  // peserta upload bukti, lalu waiting_verification → confirmed saat admin
-  // approve) — bukan cuma insert/delete baris baru. Query count-nya sendiri
-  // ringan (head:true, cuma hitung, ga narik data).
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
 
@@ -450,7 +412,6 @@ export default function Sidebar({
 
   return (
     <>
-      {/* Topbar mobile: cuma tampil di bawah breakpoint lg */}
       <header className="sticky top-0 z-40 flex items-center justify-between border-b-4 border-black bg-[#FDF6E9] px-4 py-3 lg:hidden">
         <Link href="/" className="flex shrink-0 items-center gap-2">
           <Image
@@ -494,7 +455,6 @@ export default function Sidebar({
         </button>
       </header>
 
-      {/* Sidebar tetap (fixed) buat layar lg ke atas, bisa di-collapse */}
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-30 hidden flex-col border-r-4 border-black bg-[#FDF6E9] transition-[width]",
@@ -516,7 +476,6 @@ export default function Sidebar({
         />
       </aside>
 
-      {/* Overlay + drawer buat mobile/tablet */}
       <div
         onClick={() => setOpen(false)}
         aria-hidden
@@ -580,7 +539,6 @@ export default function Sidebar({
   );
 }
 
-// Pola titik-titik halus di header, biar ada tekstur tanpa ganggu keterbacaan.
 function DotPattern() {
   return (
     <svg
@@ -625,7 +583,6 @@ function SidebarContent({
 
   return (
     <>
-      {/* Header / brand strip */}
       <div
         className={cn(
           "relative hidden overflow-hidden border-b-4 border-black bg-[#FFF7DA] transition-[padding]",
@@ -676,8 +633,6 @@ function SidebarContent({
             </span>
           </CollapseInline>
         </div>
-
-        {/* Badge H-hari, dekat lomba — muncul di kedua state (bentuknya beda) */}
         {daysToRace !== null && (
           <div
             className={cn(
@@ -744,8 +699,6 @@ function SidebarContent({
                     : "border-black/10 text-black hover:-translate-y-0.5 hover:border-black hover:bg-white hover:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]",
                 )}
               >
-                {/* Notch "robek tiket" di pojok kiri item aktif — sekarang selalu
-                    ter-mount, cuma opacity-nya yang ditransisikan biar ga "kedip". */}
                 <span
                   aria-hidden
                   className={cn(
@@ -840,7 +793,6 @@ function SidebarContent({
           </div>
         </CollapseBlock>
 
-        {/* Kartu identitas admin, gaya "ID badge" */}
         <div
           className={cn(
             "relative flex items-center border-2 border-black bg-white px-2.5 py-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all",

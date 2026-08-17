@@ -12,7 +12,6 @@ const quickFacts = [
 export default function Hero() {
   return (
     <section className="relative overflow-hidden py-16 md:py-24">
-      {/* Tekstur titik halus di background, konsisten sama halaman Information */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 opacity-[0.12]"
@@ -22,8 +21,6 @@ export default function Hero() {
           backgroundSize: "22px 22px",
         }}
       />
-
-      {/* Bentuk dekoratif, disembunyikan di layar kecil biar ga penuh */}
       <span
         aria-hidden
         className="pointer-events-none absolute -left-10 top-16 hidden h-24 w-24 rotate-12 border-4 border-black bg-[#FFD400] sm:block"
@@ -65,7 +62,6 @@ export default function Hero() {
               </p>
             </div>
 
-            {/* Info penting langsung kelihatan, ga perlu scroll ke halaman lain */}
             <div className="mt-6 flex flex-wrap gap-3">
               {quickFacts.map((f) => (
                 <span
@@ -91,8 +87,6 @@ export default function Hero() {
 
           <div className="flex justify-center">
             <div className="relative">
-              {/* Cincin putus-putus berputar pelan di belakang poster, nambah depth
-                  tanpa ganggu keterbacaan */}
               <span
                 aria-hidden
                 className="pointer-events-none absolute -inset-6 hidden rounded-full border-4 border-dashed border-black/15 [animation:spin_28s_linear_infinite] sm:block"
@@ -101,8 +95,6 @@ export default function Hero() {
             </div>
           </div>
         </div>
-
-        {/* Cue kecil buat ngarahin mata ke section berikutnya */}
         <div className="mt-14 flex justify-center md:mt-20">
           <span
             className={cn(

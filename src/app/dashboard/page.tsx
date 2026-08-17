@@ -4,10 +4,6 @@ import DashboardOverview from "@/components/dashboard/DashboardOverview";
 import PageHeader from "@/components/dashboard/PageHeader";
 
 export const dynamic = "force-dynamic";
-
-// NIK itu data pribadi sensitif -- cuma dev@acs.id yang boleh lihat nilai
-// aslinya. Admin lain tetap bisa lihat semua data peserta lainnya, tapi
-// kolom NIK-nya disamarkan.
 const NIK_VISIBLE_EMAIL = "dev@acs.id";
 
 export default async function DashboardPage() {

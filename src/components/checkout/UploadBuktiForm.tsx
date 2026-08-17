@@ -7,12 +7,9 @@ import { uploadBuktiTransfer } from "@/libs/actions/transferUpload";
 import { spaceMono } from "@/libs/Font";
 import { cn } from "@/libs/cn";
 
-const MAX_DIMENSION = 1600; // px, sisi terpanjang
+const MAX_DIMENSION = 1600;
 const JPEG_QUALITY = 0.72;
 
-// Kompres & resize gambar di browser sebelum di-upload, biar ukuran file
-// bukti transfer jauh lebih kecil dan hemat storage. Kalau gagal (browser
-// aneh, dsb), fallback ke file aslinya biar upload tetap jalan.
 function compressImage(file: File): Promise<File> {
   return new Promise((resolve) => {
     const objectUrl = URL.createObjectURL(file);
@@ -92,7 +89,6 @@ export default function UploadBuktiForm({
   const [compressInfo, setCompressInfo] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  // File hasil kompresi disimpan di sini, ini yang bakal dikirim ke server.
   const compressedFileRef = useRef<File | null>(null);
 
   async function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
@@ -119,7 +115,7 @@ export default function UploadBuktiForm({
       );
     } catch (err) {
       console.error("[UploadBuktiForm] gagal kompres gambar:", err);
-      compressedFileRef.current = file; // fallback file asli
+      compressedFileRef.current = file;
     } finally {
       setIsCompressing(false);
     }

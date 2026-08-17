@@ -26,10 +26,6 @@ export default async function CheckoutPage({
     notFound();
   }
 
-  // Supabase/PostgREST selalu balikin relasi promo_id -> promos sebagai
-  // OBJECT TUNGGAL di runtime (karena promo_id merujuk ke promos.id yang
-  // unique/primary key), tapi tipe TS hasil infer-nya kadang defensif dan
-  // nganggep bisa array -> normalize dulu lewat `unknown` biar aman dua-duanya.
   const promoRelation = registration.promos as unknown;
   const promo = (
     Array.isArray(promoRelation) ? promoRelation[0] : promoRelation
@@ -40,10 +36,6 @@ export default async function CheckoutPage({
       <Container>
         <div className="mx-auto max-w-lg">
           <CheckoutClient
-            // Snap yang render UI pilihan metode pembayaran, jadi client
-            // component di sini cuma perlu tahu APAKAH ada metode yang
-            // aktif sama sekali (buat nampilin warning kalau semua
-            // dimatikan admin), bukan daftar lengkapnya lagi.
             hasPaymentMethod={enabledPaymentMethods.length > 0}
             registration={{
               id: registration.id,

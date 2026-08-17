@@ -61,19 +61,6 @@ export default function DeleteRegistrationModal({
         </div>
 
         <div className="space-y-4 p-5">
-          {/* 
-          <div className="border-2 border-black bg-white px-3 py-2">
-            <p
-              className={cn(
-                spaceMono.className,
-                "text-[9px] uppercase tracking-widest text-black/40",
-              )}
-            >
-              Nama Peserta
-            </p>
-            <p className="mt-0.5 text-sm font-bold">{namaLengkap}</p>
-          </div> */}
-
           <div>
             <label
               className={cn(
@@ -81,7 +68,6 @@ export default function DeleteRegistrationModal({
                 "block text-[10px] uppercase tracking-widest text-black/50",
               )}
             >
-              {/* Ketik ulang nama peserta di atas untuk konfirmasi */}
               Ketik <span className="font-bold">{namaLengkap}</span> untuk
               konfirmasi
             </label>

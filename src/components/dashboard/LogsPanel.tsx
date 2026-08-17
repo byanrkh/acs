@@ -21,7 +21,6 @@ function formatRupiah(amount: number) {
   }).format(amount);
 }
 
-// Ubah "nama_lengkap" jadi "Nama Lengkap" buat label detail.
 function formatLabel(key: string) {
   return key
     .split("_")

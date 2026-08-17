@@ -49,7 +49,6 @@ export default function ContactPage() {
       <PageHero title="Contact" subtitle="Ada pertanyaan? Hubungi kami" />
 
       <Container>
-        {/* CONTACT CARDS */}
         <section className="relative -mt-8 sm:-mt-10">
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
             {contactCards.map((c) => {
@@ -91,8 +90,6 @@ export default function ContactPage() {
             })}
           </div>
         </section>
-
-        {/* LOCATION */}
         <section className="mt-16 sm:mt-24">
           <div className="border-4 border-black bg-white p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] sm:p-10">
             <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -135,8 +132,6 @@ export default function ContactPage() {
             </div>
           </div>
         </section>
-
-        {/* FAQ */}
         <section className="mt-16 sm:mt-24">
           <div className="mb-8 sm:mb-10">
             <span
