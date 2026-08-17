@@ -74,6 +74,22 @@ export async function createPaymentTransaction(
   if (registration.status === "cancelled") {
     return { ok: false, error: "Pendaftaran ini sudah dibatalkan." };
   }
+  // PENTING: checkout yang sudah "expired" SENGAJA tidak boleh dipakai bayar
+  // lagi dari halaman lama ini -- begitu status expired, NISN/NIK pemilik
+  // registrasi ini sudah dianggap "bebas" lagi (lihat
+  // findDuplicateRegistration di libs/actions/registration.ts), jadi
+  // satu-satunya jalan lanjut adalah isi ulang form pendaftaran dari awal
+  // (yang otomatis bikin baris registration baru), BUKAN generate transaksi
+  // Snap baru buat baris lama yang sama. Kalau ini tidak diblokir, orang
+  // masih bisa "menghidupkan lagi" checkout lama lewat link/bookmark lama
+  // walau sudah lewat dari batas waktu 3 jam.
+  if (registration.status === "expired") {
+    return {
+      ok: false,
+      error:
+        "Pendaftaran ini sudah kedaluwarsa dan tidak bisa dibayar lagi. Silakan daftar ulang lewat halaman Pendaftaran.",
+    };
+  }
 
   // Jaga-jaga server-side: kalau semua metode lagi dinonaktifkan admin
   // lewat Settings > Metode Bayar, jangan sampai bikin transaksi Snap

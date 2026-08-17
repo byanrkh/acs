@@ -1,6 +1,7 @@
 "use client";
 
 import Script from "next/script";
+import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -198,9 +199,14 @@ export default function CheckoutClient({
     status === "pending_payment" ? registration.payment_expires_at : null,
   );
 
-  const canEditPromo = status === "pending_payment" || status === "expired";
-  const canEditParticipantData =
-    status === "pending_payment" || status === "expired";
+  // PENTING: "expired" SENGAJA dikeluarkan dari kedua flag ini sekarang.
+  // Checkout yang sudah kedaluwarsa adalah jalan buntu -- tidak ada
+  // gunanya lagi edit promo/data peserta di baris yang sudah tidak bisa
+  // dibayar. Satu-satunya jalan lanjut buat peserta adalah daftar ulang
+  // dari awal lewat halaman /registration (lihat tombol CTA di bawah),
+  // yang otomatis bikin baris registration BARU.
+  const canEditPromo = status === "pending_payment";
+  const canEditParticipantData = status === "pending_payment";
 
   useEffect(() => {
     if (status !== "pending_payment") {
@@ -257,6 +263,17 @@ export default function CheckoutClient({
   }, [waitingConfirmation]);
 
   function handlePay() {
+    // Jaga-jaga sisi client: tombol ini seharusnya sudah tidak dirender
+    // sama sekali kalau status === "expired" (lihat bagian render di
+    // bawah), tapi tetap ditolak di sini juga kalau somehow ke-trigger.
+    // Sumber kebenaran final tetap di server lewat createPaymentTransaction.
+    if (status === "expired") {
+      setErrorMessage(
+        "Pendaftaran ini sudah kedaluwarsa. Silakan daftar ulang lewat halaman Pendaftaran.",
+      );
+      return;
+    }
+
     if (!hasPaymentMethod) {
       setErrorMessage(
         "Belum ada metode pembayaran yang aktif saat ini. Hubungi panitia lewat halaman Kontak ya.",
@@ -472,6 +489,45 @@ export default function CheckoutClient({
               Pembayaran dibatalkan
             </p>
           </div>
+        ) : status === "expired" ? (
+          // Checkout kedaluwarsa = jalan buntu, SENGAJA tidak ada lagi
+          // tombol bayar di sini sama sekali. Satu-satunya jalan lanjut
+          // adalah isi ulang form pendaftaran dari awal -- NISN/NIK sudah
+          // otomatis bebas dipakai lagi begitu status jadi "expired" (lihat
+          // findDuplicateRegistration di libs/actions/registration.ts).
+          <div className="border-4 border-[#D91E36] bg-[#D91E36]/10 p-5 text-center">
+            <p
+              className={cn(
+                SpecialGhotic.className,
+                "uppercase tracking-tight text-[#D91E36]",
+              )}
+            >
+              Waktu pembayaran habis
+            </p>
+            <p className="mt-1 text-sm text-black/70">
+              Pendaftaran ini sudah tidak dapat dilanjutkan. Silakan lakukan
+              pendaftaran ulang
+            </p>
+            <Link
+              href="/registration"
+              className={cn(
+                SpecialGhotic.className,
+                "mt-4 inline-flex w-full items-center justify-center gap-2 border-4 border-black bg-[#FFD400] px-4 py-3 text-sm uppercase tracking-tight text-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]",
+              )}
+            >
+              Daftar ulang
+            </Link>
+            {errorMessage && (
+              <p
+                className={cn(
+                  spaceMono.className,
+                  "mt-3 text-center text-xs text-[#D91E36]",
+                )}
+              >
+                {errorMessage}
+              </p>
+            )}
+          </div>
         ) : (
           <>
             {canEditPromo && (
@@ -528,23 +584,6 @@ export default function CheckoutClient({
                   </p>
                 </div>
               )}
-
-            {(status === "expired" ||
-              (countdown?.expired && status === "pending_payment")) && (
-              <div className="border-4 border-[#D91E36] bg-[#D91E36]/10 p-4 text-center">
-                <p
-                  className={cn(
-                    SpecialGhotic.className,
-                    "uppercase tracking-tight text-[#D91E36]",
-                  )}
-                >
-                  Waktu pembayaran habis
-                </p>
-                <p className="mt-1 text-sm text-black/70">
-                  Pendaftaran ini sudah kedaluwarsa. Kamu bisa coba bayar ulang.
-                </p>
-              </div>
-            )}
 
             {!hasPaymentMethod && (
               <div className="flex items-center gap-3 border-4 border-black bg-[#FFD400]/40 p-3">
@@ -606,11 +645,7 @@ export default function CheckoutClient({
                 disabled={isPending || !hasPaymentMethod}
               >
                 {isPending && <FaSpinner className="animate-spin" size={14} />}
-                {isPending
-                  ? "Menghubungi Midtrans..."
-                  : status === "expired"
-                    ? "Bayar ulang"
-                    : "Bayar Sekarang"}
+                {isPending ? "Menghubungi Midtrans..." : "Bayar Sekarang"}
               </Button>
             )}
 
