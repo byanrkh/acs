@@ -109,6 +109,26 @@ function IconSettings({ className }: IconProps) {
   );
 }
 
+function IconMegaphone({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" className={className} aria-hidden>
+      <path
+        d="M2.5 8v4a1 1 0 001 1h1.4l1 4.4a1 1 0 00.97.76H8a1 1 0 00.97-1.24L8.1 13H9l7.5 3.5v-13L9 7h-5a1.5 1.5 0 00-1.5 1z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+      <path
+        d="M16.5 6v8"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 function IconChevronDouble({ className }: IconProps) {
   return (
     <svg viewBox="0 0 20 20" fill="none" className={className} aria-hidden>
@@ -282,6 +302,15 @@ const navItems: NavItem[] = [
     activeBg: "bg-[#FFD400]",
     activeText: "text-black",
     dot: "bg-[#FFD400]",
+  },
+  {
+    label: "Broadcast",
+    shortLabel: "Kirim email ke semua peserta",
+    href: "/dashboard/broadcast",
+    icon: IconMegaphone,
+    activeBg: "bg-[#EC4899]",
+    activeText: "text-white",
+    dot: "bg-[#EC4899]",
   },
   {
     label: "Settings",
