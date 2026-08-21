@@ -12,7 +12,7 @@ export default async function DashboardPage() {
   const { data: registrations, error } = await supabaseAdmin
     .from("registrations")
     .select(
-      "id, nama_lengkap, email, telepon, kategori, ukuran_jersey, nama_bib, jenis_kelamin, golongan_darah, status, bib_number, race_pack_taken_at, created_at, final_amount, nisn, nik_terakhir",
+      "id, nama_lengkap, email, telepon, kategori, ukuran_jersey, nama_bib, jenis_kelamin, golongan_darah, status, bib_number, race_pack_taken_at, created_at, final_amount, nisn, nik_terakhir, tempat_lahir, tanggal_lahir, riwayat_penyakit, kontak_darurat_nama, kontak_darurat_telepon",
     )
     .order("created_at", { ascending: false });
 

@@ -4,6 +4,7 @@ import { Fragment, useMemo, useState, useTransition } from "react";
 import * as XLSX from "xlsx";
 import { resendRegistrationEmail } from "@/libs/actions/admin";
 import DeleteRegistrationModal from "@/components/dashboard/DeleteRegistrationModal";
+import EditRegistrationModal from "@/components/dashboard/EditRegistrationModal";
 import { spaceMono, SpecialGhotic } from "@/libs/Font";
 import { cn } from "@/libs/cn";
 
@@ -23,6 +24,11 @@ export type Registration = {
   created_at: string;
   nisn: string | null;
   nik_terakhir: string | null;
+  tempat_lahir: string;
+  tanggal_lahir: string;
+  riwayat_penyakit: string | null;
+  kontak_darurat_nama: string;
+  kontak_darurat_telepon: string;
 };
 
 export type StatusOption = { value: string; label: string };
@@ -206,6 +212,12 @@ function DetailPanel({ r }: { r: Registration }) {
             {r.kategori === "pelajar" ? r.nisn : r.nik_terakhir}
           </span>
         </DetailField>
+        <DetailField label="Tempat, Tanggal Lahir">
+          {r.tempat_lahir || "-"}, {r.tanggal_lahir || "-"}
+        </DetailField>
+        <DetailField label="Riwayat Penyakit / Alergi">
+          {r.riwayat_penyakit || <span className="text-black/30">-</span>}
+        </DetailField>
       </DetailSection>
 
       <DetailSection title="Kontak" accent="bg-[#7ED957]">
@@ -214,6 +226,9 @@ function DetailPanel({ r }: { r: Registration }) {
         </DetailField>
         <DetailField label="Telepon" copyValue={r.telepon}>
           {r.telepon}
+        </DetailField>
+        <DetailField label="Kontak Darurat">
+          {r.kontak_darurat_nama} ({r.kontak_darurat_telepon})
         </DetailField>
       </DetailSection>
 
@@ -275,8 +290,23 @@ export default function RegistrationsTable({
   const [deleteTarget, setDeleteTarget] = useState<Registration | null>(null);
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
 
+  const [editTarget, setEditTarget] = useState<Registration | null>(null);
+  // Overrides dipakai supaya perubahan lewat modal Edit langsung kelihatan
+  // di tabel tanpa nunggu event realtime dari Supabase (yang biasanya
+  // sepersekian detik lebih lambat).
+  const [overrides, setOverrides] = useState<
+    Record<string, Partial<Registration>>
+  >({});
+
+  const mergedRegistrations = useMemo(() => {
+    if (Object.keys(overrides).length === 0) return registrations;
+    return registrations.map((r) =>
+      overrides[r.id] ? { ...r, ...overrides[r.id] } : r,
+    );
+  }, [registrations, overrides]);
+
   const filtered = useMemo(() => {
-    return registrations.filter((r) => {
+    return mergedRegistrations.filter((r) => {
       if (deletedIds.has(r.id)) return false;
       const matchStatus = statusFilter === "semua" || r.status === statusFilter;
       const q = query.trim().toLowerCase();
@@ -288,7 +318,7 @@ export default function RegistrationsTable({
         r.nama_bib.toLowerCase().includes(q);
       return matchStatus && matchQuery;
     });
-  }, [registrations, query, statusFilter, deletedIds]);
+  }, [mergedRegistrations, query, statusFilter, deletedIds]);
 
   function handleExport() {
     const rows = filtered.map((r) => ({
@@ -302,6 +332,7 @@ export default function RegistrationsTable({
       "Ukuran Jersey": r.ukuran_jersey,
       "Jenis Kelamin": r.jenis_kelamin === "L" ? "Laki-laki" : "Perempuan",
       "Golongan Darah": r.golongan_darah,
+      "Riwayat Penyakit / Alergi": r.riwayat_penyakit || "-",
       Status: STATUS_LABEL[r.status] ?? r.status,
       "Race Pack Diambil": r.race_pack_taken_at ? "Sudah" : "Belum",
       "Waktu Pengambilan Race Pack": formatDateTime(r.race_pack_taken_at),
@@ -321,6 +352,7 @@ export default function RegistrationsTable({
       { wch: 12 }, // Ukuran Jersey
       { wch: 12 }, // Jenis Kelamin
       { wch: 14 }, // Golongan Darah
+      { wch: 30 }, // Riwayat Penyakit / Alergi
       { wch: 16 }, // Status
       { wch: 16 }, // Race Pack Diambil
       { wch: 24 }, // Waktu Pengambilan Race Pack
@@ -366,6 +398,50 @@ export default function RegistrationsTable({
       return next;
     });
     setExpandedId((prev) => (prev === id ? null : prev));
+  }
+
+  function handleUpdated(
+    id: string,
+    updated: {
+      namaLengkap: string;
+      email: string;
+      telepon: string;
+      tempatLahir: string;
+      tanggalLahir: string;
+      jenisKelamin: "L" | "P";
+      golonganDarah: string;
+      riwayatPenyakit: string | null;
+      kontakDaruratNama: string;
+      kontakDaruratTelepon: string;
+      ukuranJersey: string;
+      namaBib: string;
+    },
+  ) {
+    setOverrides((prev) => ({
+      ...prev,
+      [id]: {
+        nama_lengkap: updated.namaLengkap,
+        email: updated.email,
+        telepon: updated.telepon,
+        tempat_lahir: updated.tempatLahir,
+        tanggal_lahir: updated.tanggalLahir,
+        jenis_kelamin: updated.jenisKelamin,
+        golongan_darah: updated.golonganDarah,
+        riwayat_penyakit: updated.riwayatPenyakit,
+        kontak_darurat_nama: updated.kontakDaruratNama,
+        kontak_darurat_telepon: updated.kontakDaruratTelepon,
+        ukuran_jersey: updated.ukuranJersey,
+        nama_bib: updated.namaBib,
+      },
+    }));
+    setFeedback((prev) => ({ ...prev, [id]: "Data tersimpan ✓" }));
+    setTimeout(() => {
+      setFeedback((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+    }, 4000);
   }
 
   const canResend = (status: string) =>
@@ -524,6 +600,13 @@ export default function RegistrationsTable({
                         )}
                         <button
                           type="button"
+                          onClick={() => setEditTarget(r)}
+                          className="border-2 border-black bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-widest hover:bg-black hover:text-white"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => setDeleteTarget(r)}
                           className="border-2 border-[#D91E36] bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-[#D91E36] hover:bg-[#D91E36] hover:text-white"
                         >
@@ -626,6 +709,13 @@ export default function RegistrationsTable({
                         )}
                         <button
                           type="button"
+                          onClick={() => setEditTarget(r)}
+                          className="flex-1 border-2 border-black bg-white px-3 py-2 text-[11px] font-bold uppercase tracking-widest hover:bg-black hover:text-white"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => setDeleteTarget(r)}
                           className="flex-1 border-2 border-[#D91E36] bg-white px-3 py-2 text-[11px] font-bold uppercase tracking-widest text-[#D91E36] hover:bg-[#D91E36] hover:text-white"
                         >
@@ -657,6 +747,14 @@ export default function RegistrationsTable({
           namaLengkap={deleteTarget.nama_lengkap}
           onClose={() => setDeleteTarget(null)}
           onDeleted={handleDeleted}
+        />
+      )}
+
+      {editTarget && (
+        <EditRegistrationModal
+          registration={editTarget}
+          onClose={() => setEditTarget(null)}
+          onUpdated={handleUpdated}
         />
       )}
     </div>

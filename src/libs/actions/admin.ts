@@ -9,6 +9,7 @@ import { buildTransferReminderEmailHtml } from "@/libs/email/transferInvoiceTemp
 import { generateQrCodeBuffer } from "@/libs/email/qrcode";
 import { getRegistrationFee } from "@/libs/config/pricing";
 import { logAuditEvent } from "@/libs/actions/logs";
+import type { EditRegistrationPayload } from "@/libs/actions/registration";
 
 // Shape data peserta yang dipakai bareng oleh hasil scan QR/HID (selalu 1
 // data spesifik) maupun hasil pencarian manual (bisa lebih dari 1 data,
@@ -426,4 +427,169 @@ export async function deleteRegistration(
   });
 
   return { ok: true };
+}
+
+// ============================================================
+// EDIT DATA PESERTA DARI DASHBOARD ADMIN
+// ============================================================
+// Beda dari updateRegistrationData di registration.ts (yang dipakai peserta
+// sendiri lewat capability-link di halaman checkout dan CUMA bisa dipakai
+// selagi status masih "pending_payment"): admin boleh edit data peserta di
+// status APAPUN (termasuk confirmed/waiting_verification/expired/cancelled),
+// karena kadang panitia perlu benerin typo/salah input walau pembayaran
+// sudah beres. Field yang bisa diubah SENGAJA dibikin identik dengan jalur
+// peserta (EditRegistrationPayload) -- kategori & NISN/NIK tetap tidak bisa
+// diubah lewat sini karena itu identifier utama buat duplicate prevention &
+// penentuan harga (lihat registration.ts), ubahnya harus lewat Supabase
+// langsung kalau memang perlu.
+export type AdminUpdateRegistrationResult =
+  | {
+      ok: true;
+      registration: {
+        namaLengkap: string;
+        email: string;
+        telepon: string;
+        tempatLahir: string;
+        tanggalLahir: string;
+        jenisKelamin: "L" | "P";
+        golonganDarah: string;
+        riwayatPenyakit: string | null;
+        kontakDaruratNama: string;
+        kontakDaruratTelepon: string;
+        ukuranJersey: string;
+        namaBib: string;
+      };
+    }
+  | { ok: false; error: string; field?: keyof EditRegistrationPayload };
+
+function validateAdminEditPayload(
+  data: EditRegistrationPayload,
+): AdminUpdateRegistrationResult | null {
+  if (!data.namaLengkap?.trim()) {
+    return { ok: false, error: "Nama lengkap wajib diisi.", field: "namaLengkap" };
+  }
+  if (!/^\S+@\S+\.\S+$/.test(data.email ?? "")) {
+    return { ok: false, error: "Format email tidak valid.", field: "email" };
+  }
+  if (!/^0\d{9,13}$/.test(data.telepon ?? "")) {
+    return { ok: false, error: "Nomor telepon tidak valid.", field: "telepon" };
+  }
+  if (!data.tempatLahir?.trim()) {
+    return { ok: false, error: "Tempat lahir wajib diisi.", field: "tempatLahir" };
+  }
+  if (!data.tanggalLahir) {
+    return { ok: false, error: "Tanggal lahir wajib diisi.", field: "tanggalLahir" };
+  }
+  if (data.jenisKelamin !== "L" && data.jenisKelamin !== "P") {
+    return { ok: false, error: "Pilih jenis kelamin.", field: "jenisKelamin" };
+  }
+  if (!data.golonganDarah) {
+    return { ok: false, error: "Pilih golongan darah.", field: "golonganDarah" };
+  }
+  if (!data.kontakDaruratNama?.trim()) {
+    return {
+      ok: false,
+      error: "Nama kontak darurat wajib diisi.",
+      field: "kontakDaruratNama",
+    };
+  }
+  if (!/^0\d{9,13}$/.test(data.kontakDaruratTelepon ?? "")) {
+    return {
+      ok: false,
+      error: "Nomor telepon kontak darurat tidak valid.",
+      field: "kontakDaruratTelepon",
+    };
+  }
+  if (!data.ukuranJersey) {
+    return { ok: false, error: "Pilih ukuran jersey.", field: "ukuranJersey" };
+  }
+  if (!data.namaBib?.trim()) {
+    return { ok: false, error: "Nama di BIB wajib diisi.", field: "namaBib" };
+  }
+  if (data.namaBib.trim().length > 12) {
+    return { ok: false, error: "Nama di BIB maksimal 12 karakter.", field: "namaBib" };
+  }
+  return null;
+}
+
+export async function adminUpdateRegistrationData(
+  registrationId: string,
+  data: EditRegistrationPayload,
+): Promise<AdminUpdateRegistrationResult> {
+  const admin = await getAdminUser();
+  if (!admin) {
+    return { ok: false, error: "Sesi login sudah habis, silakan login ulang." };
+  }
+
+  const validationError = validateAdminEditPayload(data);
+  if (validationError) return validationError;
+
+  const { data: existing, error: fetchError } = await supabaseAdmin
+    .from("registrations")
+    .select("id, nama_lengkap, status")
+    .eq("id", registrationId)
+    .single();
+
+  if (fetchError || !existing) {
+    return { ok: false, error: "Data peserta tidak ditemukan." };
+  }
+
+  const email = data.email.trim().toLowerCase();
+
+  const { data: updated, error: updateError } = await supabaseAdmin
+    .from("registrations")
+    .update({
+      nama_lengkap: data.namaLengkap.trim(),
+      email,
+      telepon: data.telepon.trim(),
+      tempat_lahir: data.tempatLahir.trim(),
+      tanggal_lahir: data.tanggalLahir,
+      jenis_kelamin: data.jenisKelamin,
+      golongan_darah: data.golonganDarah,
+      riwayat_penyakit: data.riwayatPenyakit?.trim() || null,
+      kontak_darurat_nama: data.kontakDaruratNama.trim(),
+      kontak_darurat_telepon: data.kontakDaruratTelepon.trim(),
+      ukuran_jersey: data.ukuranJersey,
+      nama_bib: data.namaBib.trim(),
+    })
+    .eq("id", registrationId)
+    .select(
+      "nama_lengkap, email, telepon, tempat_lahir, tanggal_lahir, jenis_kelamin, golongan_darah, riwayat_penyakit, kontak_darurat_nama, kontak_darurat_telepon, ukuran_jersey, nama_bib",
+    )
+    .single();
+
+  if (updateError || !updated) {
+    console.error("[adminUpdateRegistrationData] gagal update data peserta:", updateError);
+    return { ok: false, error: "Gagal menyimpan perubahan data, coba lagi." };
+  }
+
+  await logAuditEvent({
+    actorEmail: admin.email,
+    action: "edit_registration_data",
+    description: `Admin mengubah data peserta "${existing.nama_lengkap}" (status "${existing.status}")`,
+    registrationId,
+    metadata: {
+      nama_lengkap: updated.nama_lengkap,
+      email: updated.email,
+      telepon: updated.telepon,
+    },
+  });
+
+  return {
+    ok: true,
+    registration: {
+      namaLengkap: updated.nama_lengkap as string,
+      email: updated.email as string,
+      telepon: updated.telepon as string,
+      tempatLahir: updated.tempat_lahir as string,
+      tanggalLahir: updated.tanggal_lahir as string,
+      jenisKelamin: updated.jenis_kelamin as "L" | "P",
+      golonganDarah: updated.golongan_darah as string,
+      riwayatPenyakit: updated.riwayat_penyakit as string | null,
+      kontakDaruratNama: updated.kontak_darurat_nama as string,
+      kontakDaruratTelepon: updated.kontak_darurat_telepon as string,
+      ukuranJersey: updated.ukuran_jersey as string,
+      namaBib: updated.nama_bib as string,
+    },
+  };
 }
